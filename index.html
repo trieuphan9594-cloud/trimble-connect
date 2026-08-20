@@ -3,166 +3,339 @@
 <head>
 <meta charset="UTF-8" />
 <title>Takeoff Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   * { box-sizing: border-box; }
+
+  :root {
+    --navy-900: #0B2340;
+    --navy-700: #123A61;
+    --navy-500: #2C5C8F;
+    --navy-100: #E7EDF5;
+    --amber-500: #C2780C;
+    --amber-600: #A8690A;
+    --amber-100: #FBEEDA;
+    --surface: #F5F7FA;
+    --card: #FFFFFF;
+    --border: #E1E4E9;
+    --border-strong: #C7CDD6;
+    --text: #171B22;
+    --text-mute: #5B6472;
+    --text-faint: #8A93A3;
+    --danger: #B42318;
+    --danger-bg: #FDECEB;
+    --radius: 6px;
+    --radius-lg: 10px;
+    --font-ui: 'Inter', -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
   body {
-    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    margin: 0; padding: 12px; color: #1f2937; background: #fafafa; font-size: 13px;
+    font-family: var(--font-ui);
+    margin: 0; padding: 0; color: var(--text); background: var(--surface);
+    font-size: 13px; line-height: 1.45;
   }
-  h1 { font-size: 16px; margin: 0 0 4px; }
-  .subtitle { color: #6b7280; font-size: 12px; margin-bottom: 12px; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
-  .tab {
-    padding: 8px 12px; border: none; background: none; cursor: pointer;
-    font-size: 13px; color: #6b7280; border-bottom: 2px solid transparent;
+
+  /* ---- Header ---- */
+  .app-header {
+    background: var(--navy-900); color: #fff;
+    padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 2px;
   }
-  .tab.active { color: #1d4ed8; border-bottom-color: #1d4ed8; font-weight: 600; }
-  .panel { display: none; }
-  .panel.active { display: block; }
-  .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .app-header .brand { display: flex; align-items: center; gap: 8px; }
+  .app-header .brand-mark {
+    width: 20px; height: 20px; border-radius: 5px; background: var(--amber-500);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .app-header .brand-mark svg { width: 12px; height: 12px; display: block; }
+  .app-header h1 { font-size: 15px; font-weight: 700; letter-spacing: .1px; margin: 0; }
+  .app-header .subtitle { color: #AFC2D8; font-size: 11.5px; margin: 4px 0 0 28px; }
+
+  .content { padding: 14px; }
+
+  /* ---- Cards ---- */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 13px 14px; margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-mute); margin: 0 0 9px;
+  }
+  .card .section-title:not(:first-child) { margin-top: 14px; }
+
+  /* ---- Layout helpers ---- */
+  .row { display: flex; gap: 7px; align-items: center; margin-bottom: 7px; flex-wrap: wrap; }
+  .row:last-child { margin-bottom: 0; }
+  label { font-size: 12px; color: var(--text-mute); font-weight: 500; }
+
+  /* ---- Form controls ---- */
   select, input[type=text], input[type=number] {
-    padding: 5px 7px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 12px; background: #fff;
+    padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 12px; background: #fff; color: var(--text); font-family: inherit;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  select:focus, input[type=text]:focus, input[type=number]:focus {
+    outline: none; border-color: var(--navy-500); box-shadow: 0 0 0 3px var(--navy-100);
   }
   input[type=color] {
-    width: 32px; height: 28px; padding: 2px; border: 1px solid #d1d5db; border-radius: 5px; cursor: pointer;
+    width: 34px; height: 30px; padding: 2px; border: 1px solid var(--border);
+    border-radius: var(--radius); cursor: pointer; background: #fff;
   }
+
+  /* ---- Buttons ---- */
   button {
-    padding: 6px 12px; border-radius: 6px; border: 1px solid #1d4ed8; background: #1d4ed8;
-    color: #fff; cursor: pointer; font-size: 12px;
+    font-family: inherit; padding: 6px 13px; border-radius: var(--radius);
+    border: 1px solid var(--navy-700); background: var(--navy-700); color: #fff;
+    cursor: pointer; font-size: 12px; font-weight: 600;
+    transition: background .12s, border-color .12s, transform .04s;
   }
-  button.secondary { background: #fff; color: #1d4ed8; }
-  button.ghost { background: none; color: #6b7280; border-color: #d1d5db; }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; margin-top: 8px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
-  th { color: #6b7280; font-weight: 600; background: #f9fafb; }
+  button:hover:not(:disabled) { background: var(--navy-900); border-color: var(--navy-900); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button.secondary { background: #fff; color: var(--navy-700); }
+  button.secondary:hover:not(:disabled) { background: var(--navy-100); }
+  button.ghost { background: none; color: var(--text-mute); border-color: var(--border); }
+  button.ghost:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text); background: var(--surface); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  /* Nút "Nạp dữ liệu model" — điểm nhấn amber duy nhất cho hành động khởi đầu */
+  #loadDataBtn { background: var(--amber-500); border-color: var(--amber-500); font-weight: 700; }
+  #loadDataBtn:hover:not(:disabled) { background: var(--amber-600); border-color: var(--amber-600); }
+
+  /* ---- Segmented step tabs ---- */
+  .tabs {
+    display: flex; gap: 3px; background: var(--navy-100); padding: 3px;
+    border-radius: 9px; margin-bottom: 13px;
+  }
+  .tab {
+    flex: 1; border: none; background: none; padding: 7px 4px; cursor: pointer;
+    font-size: 11.5px; font-weight: 600; color: var(--navy-700); border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background .14s, color .14s;
+  }
+  .tab .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 50%; background: var(--navy-700);
+    color: #fff; font-size: 9.5px; font-weight: 700; flex-shrink: 0;
+  }
+  .tab.active { background: var(--navy-900); color: #fff; }
+  .tab.active .step-num { background: var(--amber-500); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ---- Tables ---- */
+  .table-wrap {
+    border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-top: 6px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; background: var(--card); }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th {
+    color: var(--navy-900); font-weight: 700; background: var(--navy-100);
+    font-size: 10px; text-transform: uppercase; letter-spacing: .04em;
+  }
+  tbody tr:nth-child(even) { background: #FAFBFD; }
+  tbody tr:last-child td { border-bottom: none; }
   tr.clickable { cursor: pointer; }
-  tr.clickable:hover { background: #f0f5ff; }
-  tfoot td { font-weight: 600; border-top: 2px solid #d1d5db; border-bottom: none; background: #f9fafb; }
-  .status { color: #6b7280; margin: 8px 0; }
-  .error { color: #b91c1c; }
-  .section-title { font-weight: 600; margin: 12px 0 6px; font-size: 12px; color: #374151; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
-    border: 1px solid #d1d5db; border-radius: 12px; font-size: 11px; background: #fff; cursor: pointer;
+  tr.clickable:hover { background: var(--navy-100); }
+  #groupTable td:nth-child(2), #groupTable th:nth-child(2) { font-family: var(--font-mono); text-align: right; }
+  #qtoTable td:nth-child(n+3), #qtoTable th:nth-child(n+3) { font-family: var(--font-mono); text-align: right; }
+  /* Dòng "Tổng cộng" trình bày như con dấu tổng kết bảng bốc khối lượng */
+  tfoot td {
+    font-weight: 700; background: var(--amber-100); border-top: 2px solid var(--amber-500);
+    border-bottom: none; color: var(--navy-900); padding: 9px;
   }
-  .chip.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
-  .cond-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+  #qtoTable tfoot td:nth-child(2) {
+    font-family: var(--font-ui); text-transform: uppercase; font-size: 10.5px; letter-spacing: .06em;
+  }
+  #qtoTable tfoot td:nth-child(n+3) { font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
+
+  /* ---- Status / messages ---- */
+  .status { color: var(--text-mute); margin: 6px 0; font-size: 11.5px; }
+  .error { color: var(--danger); }
+
+  /* ---- Class chips (Tab 1) ---- */
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px;
+    border: 1px solid var(--border); border-radius: 999px; font-size: 11px; font-weight: 500;
+    background: #fff; color: var(--text-mute); cursor: pointer; transition: all .12s;
+  }
+  .chip:hover { border-color: var(--border-strong); color: var(--text); }
+  .chip.on { background: var(--navy-700); border-color: var(--navy-700); color: #fff; }
+
+  /* ---- Condition rows (Tab 1) ---- */
+  .cond-row {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 6px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 7px;
+  }
   .cond-row select, .cond-row input { flex: 1; min-width: 0; }
-  .remove-btn { color: #b91c1c; cursor: pointer; padding: 2px 6px; font-size: 14px; }
-  details { margin-top: 10px; }
-  summary { cursor: pointer; color: #6b7280; font-size: 11px; }
-  pre { background: #111827; color: #d1fae5; padding: 8px; border-radius: 6px; overflow: auto; max-height: 220px; font-size: 10px; }
+  .remove-btn {
+    color: var(--danger); cursor: pointer; padding: 2px 7px; font-size: 14px; border-radius: 4px; flex-shrink: 0;
+  }
+  .remove-btn:hover { background: var(--danger-bg); }
+
+  /* ---- Debug / collapsible panels ---- */
+  details { margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  summary {
+    cursor: pointer; color: var(--navy-700); font-size: 11px; font-weight: 600;
+    padding: 7px 10px; background: var(--navy-100); list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸  "; }
+  details[open] summary::before { content: "▾  "; }
+  pre {
+    background: var(--navy-900); color: #B9E6D0; padding: 9px; margin: 0; overflow: auto;
+    max-height: 220px; font-size: 10.5px; font-family: var(--font-mono); border-radius: 0;
+  }
 </style>
 </head>
 <body>
-  <h1>Takeoff Pro</h1>
-  <div class="subtitle" id="statusLine">Đang kết nối tới Trimble Connect 3D Viewer…</div>
-
-  <div class="row">
-    <button id="loadDataBtn" disabled>Nạp dữ liệu model</button>
-    <span class="status" id="loadStatus"></span>
+  <div class="app-header">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 7L12 3L20 7L12 11L4 7Z" fill="#0B2340"/>
+          <path d="M4 12L12 16L20 12" stroke="#0B2340" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M4 17L12 21L20 17" stroke="#0B2340" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <h1>Takeoff Pro</h1>
+    </div>
+    <div class="subtitle" id="statusLine">Đang kết nối tới Trimble Connect 3D Viewer…</div>
   </div>
 
-  <label class="row" style="gap:5px; cursor:pointer">
-    <input type="checkbox" id="autoSyncToggle" checked />
-    Tự động đồng bộ: chọn object trên model sẽ hiện ngay trong bảng khối lượng (Tab 3)
-  </label>
-  <div class="row">
-    <label>Khi chọn trong bảng, hiển thị trên model:</label>
-    <select id="highlightModeSelect">
-      <option value="dim" selected>Làm mờ (tô xám) phần còn lại — khuyến nghị</option>
-      <option value="isolate">Ẩn hoàn toàn phần còn lại</option>
-      <option value="none">Chỉ chọn, giữ nguyên màu</option>
-    </select>
-    <button class="ghost" id="restoreViewBtn">↺ Khôi phục hiển thị gốc</button>
-  </div>
+  <div class="content">
 
-  <div class="tabs">
-    <button class="tab active" data-panel="filterPanel">1. Bộ lọc</button>
-    <button class="tab" data-panel="groupPanel">2. Nhóm cấu kiện</button>
-    <button class="tab" data-panel="qtoPanel">3. Bảng khối lượng</button>
-  </div>
+    <div class="card">
+      <div class="row">
+        <button id="loadDataBtn" disabled>Nạp dữ liệu model</button>
+        <span class="status" id="loadStatus"></span>
+      </div>
 
-  <!-- TAB 1: FILTER -->
-  <div class="panel active" id="filterPanel">
-    <div class="section-title">Lọc theo loại đối tượng (class)</div>
-    <div class="row" id="classChips"><span class="status">Nạp dữ liệu để xem danh sách class</span></div>
+      <div class="section-title">Cài đặt hiển thị</div>
+      <label class="row" style="gap:6px; cursor:pointer">
+        <input type="checkbox" id="autoSyncToggle" checked />
+        Tự động đồng bộ: chọn object trên model sẽ hiện ngay trong bảng khối lượng (Tab 3)
+      </label>
+      <div class="row">
+        <label>Khi chọn trong bảng, hiển thị trên model:</label>
+        <select id="highlightModeSelect">
+          <option value="dim" selected>Làm mờ (tô xám) phần còn lại — khuyến nghị</option>
+          <option value="isolate">Ẩn hoàn toàn phần còn lại</option>
+          <option value="none">Chỉ chọn, giữ nguyên màu</option>
+        </select>
+        <button class="ghost" id="restoreViewBtn">↺ Khôi phục hiển thị gốc</button>
+      </div>
+    </div>
 
-    <div class="section-title">Điều kiện thuộc tính</div>
-    <div id="condRows"></div>
-    <button class="secondary" id="addCondBtn">+ Thêm điều kiện</button>
+    <div class="tabs">
+      <button class="tab active" data-panel="filterPanel"><span class="step-num">1</span>Bộ lọc</button>
+      <button class="tab" data-panel="groupPanel"><span class="step-num">2</span>Nhóm cấu kiện</button>
+      <button class="tab" data-panel="qtoPanel"><span class="step-num">3</span>Khối lượng</button>
+    </div>
 
-    <div class="row" style="margin-top:12px">
-      <button id="applyFilterBtn">Áp dụng bộ lọc</button>
-      <button class="ghost" id="clearFilterBtn">Xóa lọc</button>
-      <span class="status" id="filterResultStatus"></span>
-    </div>
-  </div>
+    <!-- TAB 1: FILTER -->
+    <div class="panel active" id="filterPanel">
+      <div class="card">
+        <div class="section-title">Lọc theo loại đối tượng (class)</div>
+        <div class="row" id="classChips"><span class="status">Nạp dữ liệu để xem danh sách class</span></div>
 
-  <!-- TAB 2: GROUPS -->
-  <div class="panel" id="groupPanel">
-    <div class="row">
-      <label>Nhóm theo:</label>
-      <select id="groupBySelect"><option value="__class__">Class (IfcType)</option></select>
-      <button id="runGroupBtn">Tính nhóm</button>
-    </div>
-    <table id="groupTable" style="display:none">
-      <thead><tr><th>Nhóm</th><th>Số lượng</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <div class="status" id="groupStatus"></div>
-  </div>
+        <div class="section-title">Điều kiện thuộc tính</div>
+        <div id="condRows"></div>
+        <button class="secondary" id="addCondBtn">+ Thêm điều kiện</button>
 
-  <!-- TAB 3: QTO -->
-  <div class="panel" id="qtoPanel">
-    <div class="section-title">Ánh xạ cột khối lượng</div>
-    <div class="row">
-      <label style="width:70px">Thể tích:</label>
-      <select id="mapVolume"><option value="">— không dùng —</option></select>
+        <div class="row" style="margin-top:12px">
+          <button id="applyFilterBtn">Áp dụng bộ lọc</button>
+          <button class="ghost" id="clearFilterBtn">Xóa lọc</button>
+        </div>
+        <div class="status" id="filterResultStatus"></div>
+      </div>
     </div>
-    <div class="row">
-      <label style="width:70px">Diện tích:</label>
-      <select id="mapArea"><option value="">— không dùng —</option></select>
+
+    <!-- TAB 2: GROUPS -->
+    <div class="panel" id="groupPanel">
+      <div class="card">
+        <div class="section-title">Nhóm cấu kiện</div>
+        <div class="row">
+          <label>Nhóm theo:</label>
+          <select id="groupBySelect"><option value="__class__">Class (IfcType)</option></select>
+          <button id="runGroupBtn">Tính nhóm</button>
+        </div>
+        <div class="table-wrap">
+          <table id="groupTable" style="display:none">
+            <thead><tr><th>Nhóm</th><th>Số lượng</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="status" id="groupStatus"></div>
+      </div>
     </div>
-    <div class="row">
-      <label style="width:70px">Chiều dài:</label>
-      <select id="mapLength"><option value="">— không dùng —</option></select>
+
+    <!-- TAB 3: QTO -->
+    <div class="panel" id="qtoPanel">
+      <div class="card">
+        <div class="section-title">Ánh xạ cột khối lượng</div>
+        <div class="row">
+          <label style="width:66px">Thể tích:</label>
+          <select id="mapVolume"><option value="">— không dùng —</option></select>
+        </div>
+        <div class="row">
+          <label style="width:66px">Diện tích:</label>
+          <select id="mapArea"><option value="">— không dùng —</option></select>
+        </div>
+        <div class="row">
+          <label style="width:66px">Chiều dài:</label>
+          <select id="mapLength"><option value="">— không dùng —</option></select>
+        </div>
+        <div class="row">
+          <label>Nhóm theo:</label>
+          <select id="qtoGroupBySelect"><option value="__class__">Class (IfcType)</option></select>
+        </div>
+        <div class="row">
+          <button id="runQtoBtn">Tính khối lượng</button>
+          <button class="secondary" id="exportBtn" disabled>Xuất Excel</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Thao tác trên model</div>
+        <div class="row">
+          <button id="selectIn3DBtn" disabled>📦 Select in 3D</button>
+          <input type="color" id="paintColorInput" value="#ff6a00" title="Chọn màu" />
+          <button class="secondary" id="paintBtn" disabled>🎨 Tô màu</button>
+          <button class="ghost" id="clearColorBtn" disabled>Xóa màu</button>
+        </div>
+        <div class="status" id="rowSelectStatus">Tick chọn dòng bên dưới rồi dùng các nút này.</div>
+        <details>
+          <summary>Xem chính xác object nào đang được tô/chọn (đối chiếu với model)</summary>
+          <pre id="paintDebugOutput">Tick dòng rồi bấm Tô màu / Select in 3D để xem danh sách.</pre>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Bảng khối lượng</div>
+        <div class="table-wrap">
+          <table id="qtoTable" style="display:none">
+            <thead><tr>
+              <th style="width:24px"><input type="checkbox" id="qtoSelectAllRows" /></th>
+              <th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th>
+            </tr></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+        <div class="status" id="qtoStatus">Tick 1 hoặc nhiều dòng, sau đó bấm "Select in 3D" để chọn sáng đúng các cấu kiện đó trong model.</div>
+      </div>
     </div>
-    <div class="row">
-      <label>Nhóm theo:</label>
-      <select id="qtoGroupBySelect"><option value="__class__">Class (IfcType)</option></select>
-      <button id="runQtoBtn">Tính khối lượng</button>
-      <button class="secondary" id="exportBtn" disabled>Xuất Excel</button>
-    </div>
-    <div class="row">
-      <button id="selectIn3DBtn" disabled>📦 Select in 3D</button>
-      <input type="color" id="paintColorInput" value="#ff6a00" title="Chọn màu" />
-      <button class="secondary" id="paintBtn" disabled>🎨 Tô màu</button>
-      <button class="ghost" id="clearColorBtn" disabled>Xóa màu</button>
-      <span class="status" id="rowSelectStatus">Tick chọn dòng bên dưới rồi dùng các nút này.</span>
-    </div>
+
     <details>
-      <summary>Xem chính xác object nào đang được tô/chọn (đối chiếu với model)</summary>
-      <pre id="paintDebugOutput">Tick dòng rồi bấm Tô màu / Select in 3D để xem danh sách.</pre>
+      <summary>Debug: xem cấu trúc dữ liệu property thật (dùng để chỉnh code nếu cần)</summary>
+      <pre id="debugOutput">Nạp dữ liệu rồi bấm vào 1 object trong bảng để xem.</pre>
     </details>
-    <table id="qtoTable" style="display:none">
-      <thead><tr>
-        <th style="width:24px"><input type="checkbox" id="qtoSelectAllRows" /></th>
-        <th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th>
-      </tr></thead>
-      <tbody></tbody>
-      <tfoot></tfoot>
-    </table>
-    <div class="status" id="qtoStatus">Tick 1 hoặc nhiều dòng, sau đó bấm "Select in 3D" để chọn sáng đúng các cấu kiện đó trong model.</div>
+
   </div>
 
-  <details>
-    <summary>Debug: xem cấu trúc dữ liệu property thật (dùng để chỉnh code nếu cần)</summary>
-    <pre id="debugOutput">Nạp dữ liệu rồi bấm vào 1 object trong bảng để xem.</pre>
-  </details>
 
 <script>
 (function () {
@@ -471,28 +644,46 @@
   }
 
   const DIM_GRAY = "#b8b8b8";
+  const CHUNK_SIZE = 1000;           // số id tối đa gửi trong 1 lệnh API để tránh vỡ kênh postMessage
+  const MAX_DIM_TOTAL_OBJECTS = 8000; // model lớn hơn ngưỡng này -> bỏ qua bước làm mờ (quá rủi ro/chậm)
+  let hiddenSubsetActive = false;     // true nếu đang isolate 1 tập con (cần "show all" trước khi đổi chế độ)
+
+  function chunkArray(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  /** Gọi setObjectState theo batch nhỏ để tránh gửi mảng id quá lớn trong 1 lần. */
+  async function setColorForEntitiesChunked(modelEntities, color) {
+    for (const me of modelEntities) {
+      for (const idChunk of chunkArray(me.objectRuntimeIds, CHUNK_SIZE)) {
+        await API.viewer.setObjectState(
+          { modelId: me.modelId, objectRuntimeIds: idChunk },
+          { color }
+        );
+      }
+    }
+  }
 
   /** Xóa toàn bộ màu override (color: null) trên tất cả object đã nạp, cho về màu gốc của model. */
   async function clearAllColors() {
-    const allEntities = groupByModel(allObjects);
-    for (const me of allEntities) {
-      await API.viewer.setObjectState(
-        { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
-        { color: null }
-      );
-    }
+    await setColorForEntitiesChunked(groupByModel(allObjects), null);
   }
 
   /** Hiện lại toàn bộ (undo isolate) + xóa hết màu — dùng khi người dùng bấm "Khôi phục hiển thị gốc". */
   async function restoreOriginalView() {
     const allEntities = groupByModel(allObjects);
-    if (allEntities.length) await API.viewer.isolateEntities(allEntities); // truyền full danh sách = hiện lại tất cả
+    if (allEntities.length) await API.viewer.isolateEntities(allEntities); // 1 lệnh duy nhất, không tránh được với isolateEntities
+    hiddenSubsetActive = false;
     await clearAllColors();
   }
 
   /**
    * Chọn 1 tập object trong model, với 3 chế độ hiển thị phần còn lại:
-   *  - "dim": tô xám phần còn lại, giữ nguyên màu phần được chọn (mặc định, dễ quan sát)
+   *  - "dim": tô xám phần còn lại, giữ nguyên màu phần được chọn (mặc định, dễ quan sát).
+   *           Với model rất lớn (> MAX_DIM_TOTAL_OBJECTS), tự động BỎ QUA bước tô xám
+   *           để tránh gửi payload khổng lồ làm treo Viewer — chỉ dùng highlight mặc định.
    *  - "isolate": ẩn hoàn toàn phần còn lại
    *  - "none": chỉ chọn (native highlight), không đổi màu ai cả
    */
@@ -504,31 +695,42 @@
     isProgrammaticSelection = true;
     try {
       if (mode === "isolate") {
+        // Payload = chỉ tập được chọn (thường nhỏ) -> an toàn để gửi 1 lần.
         await API.viewer.isolateEntities(modelEntities);
+        hiddenSubsetActive = true;
       } else {
-        // Đảm bảo model đang hiện đầy đủ trước (phòng lần trước đã isolate)
-        const allEntities = groupByModel(allObjects);
-        if (allEntities.length) await API.viewer.isolateEntities(allEntities);
+        // Chỉ "show all" nếu trước đó đang ở chế độ isolate (tránh gọi
+        // isolateEntities(toàn bộ model) không cần thiết mỗi lần chọn).
+        if (hiddenSubsetActive) {
+          const allEntities = groupByModel(allObjects);
+          if (allEntities.length) await API.viewer.isolateEntities(allEntities);
+          hiddenSubsetActive = false;
+        }
 
         if (mode === "dim") {
-          await clearAllColors();
-          const selectedKeys = new Set(objects.map(o => o.modelId + "::" + o.id));
-          const nonSelected = allObjects.filter(o => !selectedKeys.has(o.modelId + "::" + o.id));
-          const dimEntities = groupByModel(nonSelected);
-          for (const me of dimEntities) {
-            await API.viewer.setObjectState(
-              { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
-              { color: DIM_GRAY }
-            );
+          if (allObjects.length > MAX_DIM_TOTAL_OBJECTS) {
+            $("#rowSelectStatus").textContent =
+              `Model có ${allObjects.length} object — quá lớn để tô xám an toàn, dùng highlight mặc định thay thế.`;
+          } else {
+            await clearAllColors();
+            const selectedKeys = new Set(objects.map(o => o.modelId + "::" + o.id));
+            const nonSelected = allObjects.filter(o => !selectedKeys.has(o.modelId + "::" + o.id));
+            await setColorForEntitiesChunked(groupByModel(nonSelected), DIM_GRAY);
           }
         }
       }
 
       for (const me of modelEntities) {
-        await API.viewer.setSelection(
-          { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
-          "set"
-        );
+        const idChunks = chunkArray(me.objectRuntimeIds, CHUNK_SIZE);
+        for (let i = 0; i < idChunks.length; i++) {
+          // Chunk đầu tiên của model đầu tiên: "set" (thay thế toàn bộ selection cũ).
+          // Mọi chunk sau đó: "add" (cộng dồn vào selection đang có).
+          const isVeryFirstChunk = me === modelEntities[0] && i === 0;
+          await API.viewer.setSelection(
+            { modelId: me.modelId, objectRuntimeIds: idChunks[i] },
+            isVeryFirstChunk ? "set" : "add"
+          );
+        }
       }
       await API.viewer.setCamera({ modelId: modelEntities[0].modelId, objectRuntimeIds: modelEntities[0].objectRuntimeIds });
     } finally {
@@ -727,13 +929,7 @@
     const objs = getCheckedRowObjects();
     if (!objs.length) return;
     showPaintDebug(objs, hexColorOrNull ? `Tô màu ${hexColorOrNull}` : "Xóa màu");
-    const modelEntities = groupByModel(objs);
-    for (const me of modelEntities) {
-      const selector = { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds };
-      const state = { color: hexColorOrNull };
-      console.log("[TakeoffPro] setObjectState selector:", selector, "state:", state);
-      await API.viewer.setObjectState(selector, state);
-    }
+    await setColorForEntitiesChunked(groupByModel(objs), hexColorOrNull);
   }
 
   function exportExcel() {
