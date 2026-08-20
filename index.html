@@ -63,6 +63,11 @@
     <span class="status" id="loadStatus"></span>
   </div>
 
+  <label class="row" style="gap:5px; cursor:pointer">
+    <input type="checkbox" id="autoSyncToggle" checked />
+    Tự động đồng bộ: chọn object trên model sẽ hiện ngay trong bảng khối lượng (Tab 3)
+  </label>
+
   <div class="tabs">
     <button class="tab active" data-panel="filterPanel">1. Bộ lọc</button>
     <button class="tab" data-panel="groupPanel">2. Nhóm cấu kiện</button>
@@ -126,7 +131,7 @@
       <tbody></tbody>
       <tfoot></tfoot>
     </table>
-    <div class="status" id="qtoStatus">Click vào 1 dòng để chọn + zoom nhóm đó trong Viewer.</div>
+    <div class="status" id="qtoStatus">Click vào 1 dòng để chọn + zoom nhóm đó trong Viewer. Chọn object trên model cũng sẽ tự hiện ở đây.</div>
   </div>
 
   <details>
@@ -146,6 +151,8 @@
   let filteredObjects = [];
   /** Discovered "PsetName :: PropName" -> sample value, used to populate dropdowns */
   let discoveredPaths = new Map();
+  /** true trong lúc chính extension đang tự set selection (tránh vòng lặp khi lắng nghe onSelectionChanged) */
+  let isProgrammaticSelection = false;
 
   const $ = (sel) => document.querySelector(sel);
   const statusLine = $("#statusLine");
@@ -161,7 +168,47 @@
   }
 
   function onEvent(event, args) {
-    // viewer.onSelectionChanged, extension.accessToken, v.v. có thể xử lý ở đây nếu cần.
+    if (event === "viewer.onSelectionChanged") {
+      // Bỏ qua nếu chính extension vừa tự gọi setSelection (tránh vòng lặp),
+      // hoặc nếu người dùng đã tắt đồng bộ tự động.
+      if (isProgrammaticSelection) return;
+      if (!$("#autoSyncToggle").checked) return;
+      syncFromViewerSelection().catch(e => console.error("Lỗi đồng bộ từ Viewer:", e));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Đồng bộ MODEL -> BẢNG: khi người dùng tự chọn object trên 3D model,
+  // lấy lại selection thật qua getSelection() (đáng tin cậy hơn đọc field
+  // trong event args, vì cấu trúc SelectionChangedEventArgument chưa được
+  // xác nhận đầy đủ trong tài liệu công khai), map về object đã cache,
+  // rồi hiển thị luôn trong bảng khối lượng Tab 3.
+  // ---------------------------------------------------------------------
+  async function syncFromViewerSelection() {
+    if (!allObjects.length) return; // chưa nạp dữ liệu model thì không có gì để map
+
+    const selection = await API.viewer.getSelection();
+    console.log("[TakeoffPro] viewer.getSelection() trả về:", selection);
+    // Selection dạng ModelObjectIds[] — suy ra theo cùng pattern với
+    // ObjectSelector/IModelEntities trong SDK: { modelId, objectRuntimeIds }.
+    // Phòng thủ thêm field "ids" phòng khi tên field khác.
+    const keySet = new Set();
+    (selection || []).forEach(s => {
+      const ids = s.objectRuntimeIds || s.ids || [];
+      ids.forEach(id => keySet.add(s.modelId + "::" + id));
+    });
+
+    if (!keySet.size) {
+      $("#filterResultStatus").textContent = "Không có object nào đang được chọn trong Viewer.";
+      return;
+    }
+
+    filteredObjects = allObjects.filter(o => keySet.has(o.modelId + "::" + o.id));
+    $("#filterResultStatus").textContent =
+      `Đang hiển thị theo lựa chọn trong Viewer: ${filteredObjects.length} đối tượng.`;
+    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
+    switchToPanel("qtoPanel");
+    runQto();
   }
 
   // ---------------------------------------------------------------------
@@ -403,14 +450,21 @@
     }));
     if (!modelEntities.length) return;
 
-    for (const me of modelEntities) {
-      await API.viewer.setSelection(
-        { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
-        "set"
-      );
+    isProgrammaticSelection = true;
+    try {
+      for (const me of modelEntities) {
+        await API.viewer.setSelection(
+          { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
+          "set"
+        );
+      }
+      await API.viewer.isolateEntities(modelEntities);
+      await API.viewer.setCamera({ modelId: modelEntities[0].modelId, objectRuntimeIds: modelEntities[0].objectRuntimeIds });
+    } finally {
+      // Đợi 1 nhịp để sự kiện onSelectionChanged do chính lệnh trên gây ra
+      // được bắn ra và bị bỏ qua, trước khi mở khóa lại lắng nghe.
+      setTimeout(() => { isProgrammaticSelection = false; }, 400);
     }
-    await API.viewer.isolateEntities(modelEntities);
-    await API.viewer.setCamera({ modelId: modelEntities[0].modelId, objectRuntimeIds: modelEntities[0].objectRuntimeIds });
   }
 
   // ---------------------------------------------------------------------
@@ -560,13 +614,13 @@
     }[s]));
   }
 
+  function switchToPanel(panelId) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.panel === panelId));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === panelId));
+  }
+
   document.querySelectorAll(".tab").forEach(tab => {
-    tab.onclick = () => {
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-      tab.classList.add("active");
-      $("#" + tab.dataset.panel).classList.add("active");
-    };
+    tab.onclick = () => switchToPanel(tab.dataset.panel);
   });
 
   $("#loadDataBtn").onclick = loadModelData;
