@@ -67,6 +67,10 @@
     <input type="checkbox" id="autoSyncToggle" checked />
     Tự động đồng bộ: chọn object trên model sẽ hiện ngay trong bảng khối lượng (Tab 3)
   </label>
+  <label class="row" style="gap:5px; cursor:pointer">
+    <input type="checkbox" id="isolateToggle" />
+    Ẩn các đối tượng khác khi chọn (Isolate) — mặc định tắt để thấy vị trí cấu kiện trong toàn bộ model
+  </label>
 
   <div class="tabs">
     <button class="tab active" data-panel="filterPanel">1. Bộ lọc</button>
@@ -439,26 +443,41 @@
   // ---------------------------------------------------------------------
   // Viewer selection / isolate / zoom helper
   // ---------------------------------------------------------------------
-  async function selectAndIsolate(objects) {
+  function groupByModel(objects) {
     const byModel = new Map();
     for (const o of objects) {
       if (!byModel.has(o.modelId)) byModel.set(o.modelId, []);
       byModel.get(o.modelId).push(o.id);
     }
-    const modelEntities = [...byModel.entries()].map(([modelId, objectRuntimeIds]) => ({
-      modelId, objectRuntimeIds
-    }));
+    return [...byModel.entries()].map(([modelId, objectRuntimeIds]) => ({ modelId, objectRuntimeIds }));
+  }
+
+  async function selectAndIsolate(objects) {
+    const modelEntities = groupByModel(objects);
     if (!modelEntities.length) return;
+    const isolate = $("#isolateToggle").checked;
 
     isProgrammaticSelection = true;
     try {
+      if (!isolate) {
+        // Đảm bảo toàn bộ model đang hiện đầy đủ (phòng trường hợp lần chọn
+        // trước đó có bật Isolate và còn đang ẩn bớt object), để lần chọn
+        // này thấy được vị trí cấu kiện trong bối cảnh toàn bộ 3D model.
+        const allModelEntities = groupByModel(allObjects);
+        if (allModelEntities.length) await API.viewer.isolateEntities(allModelEntities);
+      }
+
       for (const me of modelEntities) {
         await API.viewer.setSelection(
           { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
           "set"
         );
       }
-      await API.viewer.isolateEntities(modelEntities);
+
+      if (isolate) {
+        await API.viewer.isolateEntities(modelEntities);
+      }
+
       await API.viewer.setCamera({ modelId: modelEntities[0].modelId, objectRuntimeIds: modelEntities[0].objectRuntimeIds });
     } finally {
       // Đợi 1 nhịp để sự kiện onSelectionChanged do chính lệnh trên gây ra
