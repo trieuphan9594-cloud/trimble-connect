@@ -1,12 +1,7 @@
 {
-  "name": "Assembly Search Extension",
+  "title": "Quick Search Assemblies",
   "description": "Extension tìm kiếm và lọc nhanh Assembly trong Trimble Connect",
-  "version": "1.0.0",
-  "author": "Phạm Tiến Vinh",
   "url": "https://trieuphan9594-cloud.github.io/trimble-connect/index.html",
-  "api_version": "2.0",
-  "permissions": [
-    "Project.Read",
-    "Viewer.Read"
-  ]
+  "icon": "https://trieuphan9594-cloud.github.io/trimble-connect/icon.png",
+  "enabled": true
 }
