@@ -1,6 +1,8 @@
 {
-  "title": "Quick Search Assemblies",
-  "description": "Extension tìm kiếm và lọc nhanh Assembly trong Trimble Connect",
-  "url": "https://trieuphan9594-cloud.github.io/trimble-connect/index.html",
-  "enabled": true
+  "icon": "https://example.com/icon.png",
+  "title": "Takeoff Pro",
+  "url": "https://YOUR-DEPLOYED-DOMAIN.com/index.html",
+  "description": "Loc, nhom va boc khoi luong tu IFC/BIM model ngay trong 3D Viewer.",
+  "infoUrl": "https://YOUR-DEPLOYED-DOMAIN.com/README.md",
+  "extensionType": ["3dviewer"]
 }
