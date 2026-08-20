@@ -70,10 +70,15 @@
     <input type="checkbox" id="autoSyncToggle" checked />
     Tự động đồng bộ: chọn object trên model sẽ hiện ngay trong bảng khối lượng (Tab 3)
   </label>
-  <label class="row" style="gap:5px; cursor:pointer">
-    <input type="checkbox" id="isolateToggle" />
-    Ẩn các đối tượng khác khi chọn (Isolate) — mặc định tắt để thấy vị trí cấu kiện trong toàn bộ model
-  </label>
+  <div class="row">
+    <label>Khi chọn trong bảng, hiển thị trên model:</label>
+    <select id="highlightModeSelect">
+      <option value="dim" selected>Làm mờ (tô xám) phần còn lại — khuyến nghị</option>
+      <option value="isolate">Ẩn hoàn toàn phần còn lại</option>
+      <option value="none">Chỉ chọn, giữ nguyên màu</option>
+    </select>
+    <button class="ghost" id="restoreViewBtn">↺ Khôi phục hiển thị gốc</button>
+  </div>
 
   <div class="tabs">
     <button class="tab active" data-panel="filterPanel">1. Bộ lọc</button>
@@ -461,19 +466,58 @@
     return [...byModel.entries()].map(([modelId, objectRuntimeIds]) => ({ modelId, objectRuntimeIds }));
   }
 
+  const DIM_GRAY = "#b8b8b8";
+
+  /** Xóa toàn bộ màu override (color: null) trên tất cả object đã nạp, cho về màu gốc của model. */
+  async function clearAllColors() {
+    const allEntities = groupByModel(allObjects);
+    for (const me of allEntities) {
+      await API.viewer.setObjectState(
+        { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
+        { color: null }
+      );
+    }
+  }
+
+  /** Hiện lại toàn bộ (undo isolate) + xóa hết màu — dùng khi người dùng bấm "Khôi phục hiển thị gốc". */
+  async function restoreOriginalView() {
+    const allEntities = groupByModel(allObjects);
+    if (allEntities.length) await API.viewer.isolateEntities(allEntities); // truyền full danh sách = hiện lại tất cả
+    await clearAllColors();
+  }
+
+  /**
+   * Chọn 1 tập object trong model, với 3 chế độ hiển thị phần còn lại:
+   *  - "dim": tô xám phần còn lại, giữ nguyên màu phần được chọn (mặc định, dễ quan sát)
+   *  - "isolate": ẩn hoàn toàn phần còn lại
+   *  - "none": chỉ chọn (native highlight), không đổi màu ai cả
+   */
   async function selectAndIsolate(objects) {
     const modelEntities = groupByModel(objects);
     if (!modelEntities.length) return;
-    const isolate = $("#isolateToggle").checked;
+    const mode = $("#highlightModeSelect").value;
 
     isProgrammaticSelection = true;
     try {
-      if (!isolate) {
-        // Đảm bảo toàn bộ model đang hiện đầy đủ (phòng trường hợp lần chọn
-        // trước đó có bật Isolate và còn đang ẩn bớt object), để lần chọn
-        // này thấy được vị trí cấu kiện trong bối cảnh toàn bộ 3D model.
-        const allModelEntities = groupByModel(allObjects);
-        if (allModelEntities.length) await API.viewer.isolateEntities(allModelEntities);
+      if (mode === "isolate") {
+        await API.viewer.isolateEntities(modelEntities);
+      } else {
+        // Đảm bảo model đang hiện đầy đủ trước (phòng lần trước đã isolate)
+        const allEntities = groupByModel(allObjects);
+        if (allEntities.length) await API.viewer.isolateEntities(allEntities);
+
+        if (mode === "dim") {
+          await clearAllColors();
+          const selectedKeys = new Set(objects.map(o => o.modelId + "::" + o.id));
+          const nonSelected = allObjects.filter(o => !selectedKeys.has(o.modelId + "::" + o.id));
+          const dimEntities = groupByModel(nonSelected);
+          for (const me of dimEntities) {
+            await API.viewer.setObjectState(
+              { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
+              { color: DIM_GRAY }
+            );
+          }
+        }
       }
 
       for (const me of modelEntities) {
@@ -482,11 +526,6 @@
           "set"
         );
       }
-
-      if (isolate) {
-        await API.viewer.isolateEntities(modelEntities);
-      }
-
       await API.viewer.setCamera({ modelId: modelEntities[0].modelId, objectRuntimeIds: modelEntities[0].objectRuntimeIds });
     } finally {
       // Đợi 1 nhịp để sự kiện onSelectionChanged do chính lệnh trên gây ra
@@ -721,6 +760,7 @@
     document.querySelectorAll(".qto-row-check").forEach(cb => cb.checked = e.target.checked);
     updateRowSelectionUI();
   };
+  $("#restoreViewBtn").onclick = () => restoreOriginalView().catch(e => console.error(e));
 
   init().catch(e => {
     console.error(e);
