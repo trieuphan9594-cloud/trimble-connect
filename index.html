@@ -25,6 +25,9 @@
   select, input[type=text], input[type=number] {
     padding: 5px 7px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 12px; background: #fff;
   }
+  input[type=color] {
+    width: 32px; height: 28px; padding: 2px; border: 1px solid #d1d5db; border-radius: 5px; cursor: pointer;
+  }
   button {
     padding: 6px 12px; border-radius: 6px; border: 1px solid #1d4ed8; background: #1d4ed8;
     color: #fff; cursor: pointer; font-size: 12px;
@@ -128,14 +131,23 @@
       <select id="qtoGroupBySelect"><option value="__class__">Class (IfcType)</option></select>
       <button id="runQtoBtn">Tính khối lượng</button>
       <button class="secondary" id="exportBtn" disabled>Xuất Excel</button>
-      <button class="secondary" id="selectAllQtoBtn" disabled>Chọn tất cả trong Viewer</button>
+    </div>
+    <div class="row">
+      <button id="selectIn3DBtn" disabled>📦 Select in 3D</button>
+      <input type="color" id="paintColorInput" value="#ff6a00" title="Chọn màu" />
+      <button class="secondary" id="paintBtn" disabled>🎨 Tô màu</button>
+      <button class="ghost" id="clearColorBtn" disabled>Xóa màu</button>
+      <span class="status" id="rowSelectStatus">Tick chọn dòng bên dưới rồi dùng các nút này.</span>
     </div>
     <table id="qtoTable" style="display:none">
-      <thead><tr><th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th></tr></thead>
+      <thead><tr>
+        <th style="width:24px"><input type="checkbox" id="qtoSelectAllRows" /></th>
+        <th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th>
+      </tr></thead>
       <tbody></tbody>
       <tfoot></tfoot>
     </table>
-    <div class="status" id="qtoStatus">Click vào 1 dòng để chọn + zoom nhóm đó trong Viewer. Chọn object trên model cũng sẽ tự hiện ở đây.</div>
+    <div class="status" id="qtoStatus">Tick 1 hoặc nhiều dòng, sau đó bấm "Select in 3D" để chọn sáng đúng các cấu kiện đó trong model.</div>
   </div>
 
   <details>
@@ -210,7 +222,6 @@
     filteredObjects = allObjects.filter(o => keySet.has(o.modelId + "::" + o.id));
     $("#filterResultStatus").textContent =
       `Đang hiển thị theo lựa chọn trong Viewer: ${filteredObjects.length} đối tượng.`;
-    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
     switchToPanel("qtoPanel");
     runQto();
   }
@@ -427,7 +438,6 @@
     });
 
     $("#filterResultStatus").textContent = `${filteredObjects.length} / ${allObjects.length} đối tượng khớp điều kiện.`;
-    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
     selectAndIsolate(filteredObjects);
   }
 
@@ -437,7 +447,6 @@
     document.querySelectorAll(".cond-row").forEach(r => r.remove());
     filteredObjects = allObjects.slice();
     $("#filterResultStatus").textContent = "Đã xóa bộ lọc.";
-    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
   }
 
   // ---------------------------------------------------------------------
@@ -557,7 +566,8 @@
 
     const tbody = $("#qtoTable tbody");
     tbody.innerHTML = lastQtoRows.map((r, idx) => `
-      <tr class="clickable" data-idx="${idx}" title="Click để chọn + zoom nhóm này trong Viewer">
+      <tr data-idx="${idx}">
+        <td><input type="checkbox" class="qto-row-check" data-idx="${idx}" /></td>
         <td>${escapeHtml(r.group)}</td>
         <td>${r.count}</td>
         <td>${r.volume !== null ? r.volume.toFixed(3) : "—"}</td>
@@ -565,9 +575,11 @@
         <td>${r.length !== null ? r.length.toFixed(3) : "—"}</td>
       </tr>
     `).join("");
-    tbody.querySelectorAll("tr.clickable").forEach(tr => {
-      tr.onclick = () => selectAndIsolate(lastQtoGroupObjs[Number(tr.dataset.idx)]);
+    tbody.querySelectorAll(".qto-row-check").forEach(cb => {
+      cb.onchange = updateRowSelectionUI;
     });
+    $("#qtoSelectAllRows").checked = false;
+    updateRowSelectionUI();
 
     // Dòng tổng cộng
     const totalRow = lastQtoRows.reduce((acc, r) => ({
@@ -579,6 +591,7 @@
 
     $("#qtoTable tfoot").innerHTML = lastQtoRows.length ? `
       <tr>
+        <td></td>
         <td>Tổng cộng</td>
         <td>${totalRow.count}</td>
         <td>${totalRow.volume !== null ? totalRow.volume.toFixed(3) : "—"}</td>
@@ -589,10 +602,62 @@
 
     $("#qtoTable").style.display = lastQtoRows.length ? "table" : "none";
     $("#qtoStatus").textContent = lastQtoRows.length
-      ? `${lastQtoRows.length} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc. Click 1 dòng để chọn + zoom nhóm đó trong Viewer.`
+      ? `${lastQtoRows.length} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc. Tick dòng rồi bấm "Select in 3D".`
       : "Không có dữ liệu khớp bộ lọc hiện tại.";
     $("#exportBtn").disabled = !lastQtoRows.length;
-    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
+  }
+
+  // ---------------------------------------------------------------------
+  // Checkbox theo dòng -> gom object thật của các dòng đang tick
+  // ---------------------------------------------------------------------
+  function getCheckedRowObjects() {
+    const checked = [...document.querySelectorAll(".qto-row-check:checked")];
+    const objs = [];
+    checked.forEach(cb => {
+      const idx = Number(cb.dataset.idx);
+      objs.push(...lastQtoGroupObjs[idx]);
+    });
+    return objs;
+  }
+
+  function updateRowSelectionUI() {
+    const anyChecked = document.querySelectorAll(".qto-row-check:checked").length > 0;
+    $("#selectIn3DBtn").disabled = !anyChecked;
+    $("#paintBtn").disabled = !anyChecked;
+    $("#clearColorBtn").disabled = !anyChecked;
+    const n = getCheckedRowObjects().length;
+    $("#rowSelectStatus").textContent = anyChecked
+      ? `Đã tick ${document.querySelectorAll(".qto-row-check:checked").length} nhóm (${n} object).`
+      : "Tick chọn dòng bên dưới rồi dùng các nút này.";
+  }
+
+  // ---------------------------------------------------------------------
+  // Select in 3D — chọn sáng đúng các object của những dòng đã tick,
+  // KHÔNG ẩn phần còn lại (tôn trọng checkbox "Isolate" ở đầu trang).
+  // ---------------------------------------------------------------------
+  async function selectIn3D() {
+    const objs = getCheckedRowObjects();
+    if (!objs.length) return;
+    await selectAndIsolate(objs);
+  }
+
+  // ---------------------------------------------------------------------
+  // Tô màu — dùng viewer.setObjectState({ color }) trên các object đã tick.
+  // LƯU Ý: chưa xác nhận 100% tên field "color" khớp với ObjectState thật
+  // (tài liệu công khai không show đủ chi tiết). ObjectProperties.color
+  // được xác nhận là kiểu string (hex), nên khả năng cao ObjectState cũng
+  // nhận string hex tương tự — console.log để bạn đối chiếu nếu không lên màu.
+  // ---------------------------------------------------------------------
+  async function paintCheckedRows(hexColorOrNull) {
+    const objs = getCheckedRowObjects();
+    if (!objs.length) return;
+    const modelEntities = groupByModel(objs);
+    for (const me of modelEntities) {
+      const selector = { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds };
+      const state = { color: hexColorOrNull };
+      console.log("[TakeoffPro] setObjectState selector:", selector, "state:", state);
+      await API.viewer.setObjectState(selector, state);
+    }
   }
 
   function exportExcel() {
@@ -649,7 +714,13 @@
   $("#runGroupBtn").onclick = runGroup;
   $("#runQtoBtn").onclick = runQto;
   $("#exportBtn").onclick = exportExcel;
-  $("#selectAllQtoBtn").onclick = () => selectAndIsolate(filteredObjects);
+  $("#selectIn3DBtn").onclick = () => selectIn3D().catch(e => console.error(e));
+  $("#paintBtn").onclick = () => paintCheckedRows($("#paintColorInput").value).catch(e => console.error(e));
+  $("#clearColorBtn").onclick = () => paintCheckedRows(null).catch(e => console.error(e));
+  $("#qtoSelectAllRows").onchange = (e) => {
+    document.querySelectorAll(".qto-row-check").forEach(cb => cb.checked = e.target.checked);
+    updateRowSelectionUI();
+  };
 
   init().catch(e => {
     console.error(e);
