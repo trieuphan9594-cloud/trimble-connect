@@ -37,6 +37,7 @@
   th { color: #6b7280; font-weight: 600; background: #f9fafb; }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover { background: #f0f5ff; }
+  tfoot td { font-weight: 600; border-top: 2px solid #d1d5db; border-bottom: none; background: #f9fafb; }
   .status { color: #6b7280; margin: 8px 0; }
   .error { color: #b91c1c; }
   .section-title { font-weight: 600; margin: 12px 0 6px; font-size: 12px; color: #374151; }
@@ -118,12 +119,14 @@
       <select id="qtoGroupBySelect"><option value="__class__">Class (IfcType)</option></select>
       <button id="runQtoBtn">Tính khối lượng</button>
       <button class="secondary" id="exportBtn" disabled>Xuất Excel</button>
+      <button class="secondary" id="selectAllQtoBtn" disabled>Chọn tất cả trong Viewer</button>
     </div>
     <table id="qtoTable" style="display:none">
       <thead><tr><th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th></tr></thead>
       <tbody></tbody>
+      <tfoot></tfoot>
     </table>
-    <div class="status" id="qtoStatus"></div>
+    <div class="status" id="qtoStatus">Click vào 1 dòng để chọn + zoom nhóm đó trong Viewer.</div>
   </div>
 
   <details>
@@ -373,6 +376,7 @@
     });
 
     $("#filterResultStatus").textContent = `${filteredObjects.length} / ${allObjects.length} đối tượng khớp điều kiện.`;
+    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
     selectAndIsolate(filteredObjects);
   }
 
@@ -382,6 +386,7 @@
     document.querySelectorAll(".cond-row").forEach(r => r.remove());
     filteredObjects = allObjects.slice();
     $("#filterResultStatus").textContent = "Đã xóa bộ lọc.";
+    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
   }
 
   // ---------------------------------------------------------------------
@@ -440,7 +445,8 @@
   // ---------------------------------------------------------------------
   // TAB 3: QUANTITY TAKEOFF + EXPORT EXCEL
   // ---------------------------------------------------------------------
-  let lastQtoRows = [];
+  let lastQtoRows = [];       // dữ liệu hiển thị + xuất Excel (không giữ object refs, để export gọn)
+  let lastQtoGroupObjs = [];  // song song với lastQtoRows, giữ mảng object thật để "chọn trong Viewer"
 
   function sumProp(objects, path) {
     if (!path) return null;
@@ -453,6 +459,12 @@
     return found ? total : null;
   }
 
+  /** Cộng dồn nhiều giá trị "sum có thể null" — null chỉ giữ nếu TẤT CẢ đều null */
+  function addMaybe(a, b) {
+    if (a === null && b === null) return null;
+    return (a || 0) + (b || 0);
+  }
+
   function runQto() {
     const groupBy = $("#qtoGroupBySelect").value;
     const volPath = $("#mapVolume").value;
@@ -460,17 +472,19 @@
     const lenPath = $("#mapLength").value;
     const groups = groupObjects(filteredObjects, groupBy);
 
-    lastQtoRows = [...groups.entries()].map(([key, objs]) => ({
+    const entries = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+    lastQtoGroupObjs = entries.map(([, objs]) => objs);
+    lastQtoRows = entries.map(([key, objs]) => ({
       group: String(key),
       count: objs.length,
       volume: sumProp(objs, volPath),
       area: sumProp(objs, areaPath),
       length: sumProp(objs, lenPath)
-    })).sort((a, b) => b.count - a.count);
+    }));
 
     const tbody = $("#qtoTable tbody");
-    tbody.innerHTML = lastQtoRows.map(r => `
-      <tr>
+    tbody.innerHTML = lastQtoRows.map((r, idx) => `
+      <tr class="clickable" data-idx="${idx}" title="Click để chọn + zoom nhóm này trong Viewer">
         <td>${escapeHtml(r.group)}</td>
         <td>${r.count}</td>
         <td>${r.volume !== null ? r.volume.toFixed(3) : "—"}</td>
@@ -478,9 +492,34 @@
         <td>${r.length !== null ? r.length.toFixed(3) : "—"}</td>
       </tr>
     `).join("");
+    tbody.querySelectorAll("tr.clickable").forEach(tr => {
+      tr.onclick = () => selectAndIsolate(lastQtoGroupObjs[Number(tr.dataset.idx)]);
+    });
+
+    // Dòng tổng cộng
+    const totalRow = lastQtoRows.reduce((acc, r) => ({
+      count: acc.count + r.count,
+      volume: addMaybe(acc.volume, r.volume),
+      area: addMaybe(acc.area, r.area),
+      length: addMaybe(acc.length, r.length)
+    }), { count: 0, volume: null, area: null, length: null });
+
+    $("#qtoTable tfoot").innerHTML = lastQtoRows.length ? `
+      <tr>
+        <td>Tổng cộng</td>
+        <td>${totalRow.count}</td>
+        <td>${totalRow.volume !== null ? totalRow.volume.toFixed(3) : "—"}</td>
+        <td>${totalRow.area !== null ? totalRow.area.toFixed(3) : "—"}</td>
+        <td>${totalRow.length !== null ? totalRow.length.toFixed(3) : "—"}</td>
+      </tr>
+    ` : "";
+
     $("#qtoTable").style.display = lastQtoRows.length ? "table" : "none";
-    $("#qtoStatus").textContent = `${lastQtoRows.length} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc.`;
+    $("#qtoStatus").textContent = lastQtoRows.length
+      ? `${lastQtoRows.length} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc. Click 1 dòng để chọn + zoom nhóm đó trong Viewer.`
+      : "Không có dữ liệu khớp bộ lọc hiện tại.";
     $("#exportBtn").disabled = !lastQtoRows.length;
+    $("#selectAllQtoBtn").disabled = !filteredObjects.length;
   }
 
   function exportExcel() {
@@ -492,6 +531,20 @@
       "Diện tích": r.area,
       "Chiều dài": r.length
     }));
+    const totalRow = lastQtoRows.reduce((acc, r) => ({
+      count: acc.count + r.count,
+      volume: addMaybe(acc.volume, r.volume),
+      area: addMaybe(acc.area, r.area),
+      length: addMaybe(acc.length, r.length)
+    }), { count: 0, volume: null, area: null, length: null });
+    data.push({
+      "Nhóm": "Tổng cộng",
+      "Số lượng": totalRow.count,
+      "Thể tích": totalRow.volume,
+      "Diện tích": totalRow.area,
+      "Chiều dài": totalRow.length
+    });
+
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bang khoi luong");
@@ -523,6 +576,7 @@
   $("#runGroupBtn").onclick = runGroup;
   $("#runQtoBtn").onclick = runQto;
   $("#exportBtn").onclick = exportExcel;
+  $("#selectAllQtoBtn").onclick = () => selectAndIsolate(filteredObjects);
 
   init().catch(e => {
     console.error(e);
