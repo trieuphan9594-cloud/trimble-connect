@@ -4,7 +4,5 @@
   "url": "https://YOUR-DEPLOYED-DOMAIN.com/index.html",
   "description": "Loc, nhom va boc khoi luong tu IFC/BIM model ngay trong 3D Viewer.",
   "infoUrl": "https://YOUR-DEPLOYED-DOMAIN.com/README.md",
-  "extensionType": [
-    "3dviewer"
-  ]
+  "extensionType": ["3dviewer"]
 }
