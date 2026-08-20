@@ -1,129 +1,534 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search & Filter Assemblies</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 15px;
-            background-color: #f4f6f9;
-            color: #333;
-        }
-        h3 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #0063e5;
-        }
-        .form-group {
-            margin-bottom: 12px;
-        }
-        label {
-            display: block;
-            font-size: 13px;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            width: 100%;
-            padding: 9px;
-            background-color: #0063e5;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-bottom: 6px;
-        }
-        button:hover {
-            background-color: #004bb5;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-        }
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-        #status {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-        }
-    </style>
-    <!-- Nhúng thư viện Trimble Connect Workspace API -->
-    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+<meta charset="UTF-8" />
+<title>Takeoff Pro</title>
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0; padding: 12px; color: #1f2937; background: #fafafa; font-size: 13px;
+  }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  .subtitle { color: #6b7280; font-size: 12px; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+  .tab {
+    padding: 8px 12px; border: none; background: none; cursor: pointer;
+    font-size: 13px; color: #6b7280; border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: #1d4ed8; border-bottom-color: #1d4ed8; font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  select, input[type=text], input[type=number] {
+    padding: 5px 7px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 12px; background: #fff;
+  }
+  button {
+    padding: 6px 12px; border-radius: 6px; border: 1px solid #1d4ed8; background: #1d4ed8;
+    color: #fff; cursor: pointer; font-size: 12px;
+  }
+  button.secondary { background: #fff; color: #1d4ed8; }
+  button.ghost { background: none; color: #6b7280; border-color: #d1d5db; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+  th { color: #6b7280; font-weight: 600; background: #f9fafb; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: #f0f5ff; }
+  .status { color: #6b7280; margin: 8px 0; }
+  .error { color: #b91c1c; }
+  .section-title { font-weight: 600; margin: 12px 0 6px; font-size: 12px; color: #374151; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+    border: 1px solid #d1d5db; border-radius: 12px; font-size: 11px; background: #fff; cursor: pointer;
+  }
+  .chip.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+  .cond-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+  .cond-row select, .cond-row input { flex: 1; min-width: 0; }
+  .remove-btn { color: #b91c1c; cursor: pointer; padding: 2px 6px; font-size: 14px; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: #6b7280; font-size: 11px; }
+  pre { background: #111827; color: #d1fae5; padding: 8px; border-radius: 6px; overflow: auto; max-height: 220px; font-size: 10px; }
+</style>
 </head>
 <body>
+  <h1>Takeoff Pro</h1>
+  <div class="subtitle" id="statusLine">Đang kết nối tới Trimble Connect 3D Viewer…</div>
 
-    <h3>Lọc Nhanh Assembly</h3>
-    
-    <div class="form-group">
-        <label for="assemblyInput">Nhập mã vị trí (Assembly Position):</label>
-        <input type="text" id="assemblyInput" placeholder="Ví dụ: B1, W-1, C12...">
+  <div class="row">
+    <button id="loadDataBtn" disabled>Nạp dữ liệu model</button>
+    <span class="status" id="loadStatus"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="filterPanel">1. Bộ lọc</button>
+    <button class="tab" data-panel="groupPanel">2. Nhóm cấu kiện</button>
+    <button class="tab" data-panel="qtoPanel">3. Bảng khối lượng</button>
+  </div>
+
+  <!-- TAB 1: FILTER -->
+  <div class="panel active" id="filterPanel">
+    <div class="section-title">Lọc theo loại đối tượng (class)</div>
+    <div class="row" id="classChips"><span class="status">Nạp dữ liệu để xem danh sách class</span></div>
+
+    <div class="section-title">Điều kiện thuộc tính</div>
+    <div id="condRows"></div>
+    <button class="secondary" id="addCondBtn">+ Thêm điều kiện</button>
+
+    <div class="row" style="margin-top:12px">
+      <button id="applyFilterBtn">Áp dụng bộ lọc</button>
+      <button class="ghost" id="clearFilterBtn">Xóa lọc</button>
+      <span class="status" id="filterResultStatus"></span>
     </div>
+  </div>
 
-    <button id="btnIsolate">Cô lập Assembly (Isolate)</button>
-    <button id="btnSelect" class="btn-secondary">Chọn đối tượng (Select)</button>
-    <button id="btnReset" class="btn-secondary">Hiển thị tất cả (Reset)</button>
+  <!-- TAB 2: GROUPS -->
+  <div class="panel" id="groupPanel">
+    <div class="row">
+      <label>Nhóm theo:</label>
+      <select id="groupBySelect"><option value="__class__">Class (IfcType)</option></select>
+      <button id="runGroupBtn">Tính nhóm</button>
+    </div>
+    <table id="groupTable" style="display:none">
+      <thead><tr><th>Nhóm</th><th>Số lượng</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="status" id="groupStatus"></div>
+  </div>
 
-    <div id="status">Đang kết nối tới Trimble Connect...</div>
+  <!-- TAB 3: QTO -->
+  <div class="panel" id="qtoPanel">
+    <div class="section-title">Ánh xạ cột khối lượng</div>
+    <div class="row">
+      <label style="width:70px">Thể tích:</label>
+      <select id="mapVolume"><option value="">— không dùng —</option></select>
+    </div>
+    <div class="row">
+      <label style="width:70px">Diện tích:</label>
+      <select id="mapArea"><option value="">— không dùng —</option></select>
+    </div>
+    <div class="row">
+      <label style="width:70px">Chiều dài:</label>
+      <select id="mapLength"><option value="">— không dùng —</option></select>
+    </div>
+    <div class="row">
+      <label>Nhóm theo:</label>
+      <select id="qtoGroupBySelect"><option value="__class__">Class (IfcType)</option></select>
+      <button id="runQtoBtn">Tính khối lượng</button>
+      <button class="secondary" id="exportBtn" disabled>Xuất Excel</button>
+    </div>
+    <table id="qtoTable" style="display:none">
+      <thead><tr><th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="status" id="qtoStatus"></div>
+  </div>
 
-    <script>
-        let workspaceAPI = null;
+  <details>
+    <summary>Debug: xem cấu trúc dữ liệu property thật (dùng để chỉnh code nếu cần)</summary>
+    <pre id="debugOutput">Nạp dữ liệu rồi bấm vào 1 object trong bảng để xem.</pre>
+  </details>
 
-        async function init() {
-            try {
-                // Kết nối với môi trường Trimble Connect thông qua Workspace API
-                workspaceAPI = await TrimbleConnectWorkspace.connect(window.parent);
-                document.getElementById('status').innerText = "Đã kết nối thành công!";
-            } catch (error) {
-                console.error("Lỗi kết nối Workspace API:", error);
-                document.getElementById('status').innerText = "Không thể kết nối Trimble Connect.";
+<script>
+(function () {
+  // ---------------------------------------------------------------------
+  // STATE
+  // ---------------------------------------------------------------------
+  let API = null;
+  /** Flattened cache: { modelId, id, class, propertySets: PropertySet[] } */
+  let allObjects = [];
+  /** Currently filtered subset (defaults to allObjects) */
+  let filteredObjects = [];
+  /** Discovered "PsetName :: PropName" -> sample value, used to populate dropdowns */
+  let discoveredPaths = new Map();
+
+  const $ = (sel) => document.querySelector(sel);
+  const statusLine = $("#statusLine");
+  const loadStatus = $("#loadStatus");
+
+  // ---------------------------------------------------------------------
+  // CONNECT
+  // ---------------------------------------------------------------------
+  async function init() {
+    API = await TrimbleConnectWorkspace.connect(window.parent, onEvent, 30000);
+    statusLine.textContent = "Đã kết nối. Sẵn sàng nạp dữ liệu model đang mở.";
+    $("#loadDataBtn").disabled = false;
+  }
+
+  function onEvent(event, args) {
+    // viewer.onSelectionChanged, extension.accessToken, v.v. có thể xử lý ở đây nếu cần.
+  }
+
+  // ---------------------------------------------------------------------
+  // LOAD MODEL DATA
+  // Bước 1: liệt kê object trong các model đã load (viewer.getObjects)
+  // Bước 2: lấy đầy đủ property sets cho từng object (viewer.getObjectProperties),
+  //         gọi theo batch để tránh 1 request quá lớn.
+  // ---------------------------------------------------------------------
+  async function loadModelData() {
+    $("#loadDataBtn").disabled = true;
+    loadStatus.textContent = "Đang lấy danh sách model…";
+    allObjects = [];
+    discoveredPaths = new Map();
+
+    try {
+      const models = await API.viewer.getModels("loaded");
+      if (!models || !models.length) {
+        loadStatus.textContent = "Không có model nào đang mở trong Viewer.";
+        $("#loadDataBtn").disabled = false;
+        return;
+      }
+
+      for (const model of models) {
+        loadStatus.textContent = `Đang lấy đối tượng của model "${model.name || model.id}"…`;
+        const modelObjectsList = await API.viewer.getObjects({ modelId: model.id });
+        for (const mo of modelObjectsList) {
+          const runtimeIds = (mo.objects || []).map(o => o.id);
+          // Lấy property đầy đủ theo batch 300 object/lần
+          const BATCH = 300;
+          for (let i = 0; i < runtimeIds.length; i += BATCH) {
+            const batchIds = runtimeIds.slice(i, i + BATCH);
+            loadStatus.textContent =
+              `Model "${model.name || model.id}": đang lấy thuộc tính ${i + batchIds.length}/${runtimeIds.length}…`;
+            const props = await API.viewer.getObjectProperties(mo.modelId, batchIds);
+            for (const p of props) {
+              allObjects.push({
+                modelId: mo.modelId,
+                id: p.id,
+                class: p.class || "(không rõ class)",
+                propertySets: p.properties || []
+              });
+              collectDiscoveredPaths(p.properties || []);
             }
+          }
         }
+      }
 
-        // Sự kiện nút: Lọc và cô lập assembly dựa trên thuộc tính
-        document.getElementById('btnIsolate').addEventListener('click', async () => {
-            if (!workspaceAPI) return;
-            const query = document.getElementById('assemblyInput').value.trim();
-            if (!query) {
-                alert("Vui lòng nhập mã assembly cần tìm!");
-                return;
-            }
+      filteredObjects = allObjects.slice();
+      loadStatus.textContent = `Đã nạp ${allObjects.length} đối tượng.`;
+      populateClassChips();
+      populatePropertyDropdowns();
+      renderDebugSample();
+    } catch (e) {
+      console.error(e);
+      loadStatus.textContent = "Lỗi khi nạp dữ liệu: " + e.message;
+    } finally {
+      $("#loadDataBtn").disabled = false;
+    }
+  }
 
-            document.getElementById('status').innerText = "Đang tìm kiếm...";
-            
-            try {
-                // Lấy danh sách các model đang load trong viewer
-                const models = await workspaceAPI.viewer.getLoadedModel();
-                // Thực hiện logic quét thuộc tính mô hình và gọi API cô lập đối tượng (isolate)
-                // Ví dụ mẫu: gọi phương thức viewer để xử lý lọc đối tượng dựa trên ID hoặc thuộc tính
-                document.getElementById('status').innerText = `Đã tìm kiếm với từ khóa: "${query}"`;
-            } catch (err) {
-                console.error(err);
-                document.getElementById('status').innerText = "Lỗi khi xử lý tìm kiếm.";
-            }
-        });
+  // ---------------------------------------------------------------------
+  // Property access helper — CHƯA XÁC NHẬN 100% tên field chính xác của
+  // PropertySet/Property (tài liệu công khai không show đủ chi tiết).
+  // Hàm này thử nhiều tên field phổ biến; dùng khung debug bên dưới để
+  // xem cấu trúc thật và chỉnh lại nếu cần.
+  // ---------------------------------------------------------------------
+  function getSetName(set) {
+    return set.name || set.displayName || set.setName || "(pset)";
+  }
+  function getPropList(set) {
+    return set.properties || set.props || [];
+  }
+  function getPropName(prop) {
+    return prop.name || prop.displayName || prop.propertyName || "(prop)";
+  }
+  function getPropValue(prop) {
+    if (prop.value !== undefined) return prop.value;
+    if (prop.values !== undefined) return Array.isArray(prop.values) ? prop.values[0] : prop.values;
+    return undefined;
+  }
 
-        // Nút Reset hiển thị lại toàn bộ mô hình
-        document.getElementById('btnReset').addEventListener('click', async () => {
-            if (!workspaceAPI) return;
-            document.getElementById('assemblyInput').value = '';
-            // Gọi lệnh reset hiển thị trong viewer nếu cần
-            document.getElementById('status').innerText = "Đã đặt lại trạng thái hiển thị.";
-        });
+  function collectDiscoveredPaths(propertySets) {
+    for (const set of propertySets) {
+      const setName = getSetName(set);
+      for (const prop of getPropList(set)) {
+        const propName = getPropName(prop);
+        const path = setName + " :: " + propName;
+        if (!discoveredPaths.has(path)) discoveredPaths.set(path, getPropValue(prop));
+      }
+    }
+  }
 
-        init();
-    </script>
+  function findValue(obj, path) {
+    if (!path) return undefined;
+    const [setName, propName] = path.split(" :: ");
+    for (const set of obj.propertySets) {
+      if (getSetName(set) !== setName) continue;
+      for (const prop of getPropList(set)) {
+        if (getPropName(prop) === propName) return getPropValue(prop);
+      }
+    }
+    return undefined;
+  }
+
+  function renderDebugSample() {
+    if (!allObjects.length) return;
+    $("#debugOutput").textContent = JSON.stringify(allObjects[0].propertySets, null, 2);
+  }
+
+  // ---------------------------------------------------------------------
+  // TAB 1: FILTER
+  // ---------------------------------------------------------------------
+  let activeClasses = new Set(); // empty = all
+  const operators = ["=", "!=", ">", ">=", "<", "<=", "chứa"];
+
+  function populateClassChips() {
+    const classes = [...new Set(allObjects.map(o => o.class))].sort();
+    const container = $("#classChips");
+    container.innerHTML = "";
+    if (!classes.length) {
+      container.innerHTML = '<span class="status">Không tìm thấy class nào</span>';
+      return;
+    }
+    classes.forEach(c => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = c;
+      chip.onclick = () => {
+        if (activeClasses.has(c)) { activeClasses.delete(c); chip.classList.remove("on"); }
+        else { activeClasses.add(c); chip.classList.add("on"); }
+      };
+      container.appendChild(chip);
+    });
+  }
+
+  function populatePropertyDropdowns() {
+    const paths = [...discoveredPaths.keys()].sort();
+    document.querySelectorAll(".cond-prop-select").forEach(sel => fillOptions(sel, paths));
+    fillOptions($("#mapVolume"), paths, true);
+    fillOptions($("#mapArea"), paths, true);
+    fillOptions($("#mapLength"), paths, true);
+
+    const groupPaths = ["__class__", ...paths];
+    fillGroupOptions($("#groupBySelect"), groupPaths);
+    fillGroupOptions($("#qtoGroupBySelect"), groupPaths);
+  }
+
+  function fillOptions(select, paths, keepEmpty) {
+    const current = select.value;
+    select.innerHTML = keepEmpty ? '<option value="">— không dùng —</option>' : "";
+    paths.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p; opt.textContent = p;
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+  }
+
+  function fillGroupOptions(select, paths) {
+    const current = select.value;
+    select.innerHTML = '<option value="__class__">Class (IfcType)</option>';
+    paths.filter(p => p !== "__class__").forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p; opt.textContent = p;
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+  }
+
+  function addConditionRow() {
+    const row = document.createElement("div");
+    row.className = "cond-row";
+    row.innerHTML = `
+      <select class="cond-prop-select"></select>
+      <select class="cond-op-select">${operators.map(o => `<option>${o}</option>`).join("")}</select>
+      <input type="text" class="cond-val-input" placeholder="giá trị" />
+      <span class="remove-btn">✕</span>
+    `;
+    row.querySelector(".remove-btn").onclick = () => row.remove();
+    $("#condRows").appendChild(row);
+    fillOptions(row.querySelector(".cond-prop-select"), [...discoveredPaths.keys()].sort());
+  }
+
+  function evalCondition(obj, path, op, rawVal) {
+    const actual = findValue(obj, path);
+    if (actual === undefined) return false;
+    const numActual = parseFloat(actual);
+    const numVal = parseFloat(rawVal);
+    const bothNumeric = !isNaN(numActual) && !isNaN(numVal);
+    switch (op) {
+      case "=": return bothNumeric ? numActual === numVal : String(actual) === rawVal;
+      case "!=": return bothNumeric ? numActual !== numVal : String(actual) !== rawVal;
+      case ">": return bothNumeric && numActual > numVal;
+      case ">=": return bothNumeric && numActual >= numVal;
+      case "<": return bothNumeric && numActual < numVal;
+      case "<=": return bothNumeric && numActual <= numVal;
+      case "chứa": return String(actual).toLowerCase().includes(rawVal.toLowerCase());
+      default: return true;
+    }
+  }
+
+  function applyFilter() {
+    const conditions = [...document.querySelectorAll(".cond-row")].map(row => ({
+      path: row.querySelector(".cond-prop-select").value,
+      op: row.querySelector(".cond-op-select").value,
+      val: row.querySelector(".cond-val-input").value
+    })).filter(c => c.path && c.val !== "");
+
+    filteredObjects = allObjects.filter(obj => {
+      if (activeClasses.size && !activeClasses.has(obj.class)) return false;
+      return conditions.every(c => evalCondition(obj, c.path, c.op, c.val));
+    });
+
+    $("#filterResultStatus").textContent = `${filteredObjects.length} / ${allObjects.length} đối tượng khớp điều kiện.`;
+    selectAndIsolate(filteredObjects);
+  }
+
+  function clearFilter() {
+    activeClasses.clear();
+    document.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+    document.querySelectorAll(".cond-row").forEach(r => r.remove());
+    filteredObjects = allObjects.slice();
+    $("#filterResultStatus").textContent = "Đã xóa bộ lọc.";
+  }
+
+  // ---------------------------------------------------------------------
+  // Viewer selection / isolate / zoom helper
+  // ---------------------------------------------------------------------
+  async function selectAndIsolate(objects) {
+    const byModel = new Map();
+    for (const o of objects) {
+      if (!byModel.has(o.modelId)) byModel.set(o.modelId, []);
+      byModel.get(o.modelId).push(o.id);
+    }
+    const modelEntities = [...byModel.entries()].map(([modelId, objectRuntimeIds]) => ({
+      modelId, objectRuntimeIds
+    }));
+    if (!modelEntities.length) return;
+
+    for (const me of modelEntities) {
+      await API.viewer.setSelection(
+        { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds },
+        "set"
+      );
+    }
+    await API.viewer.isolateEntities(modelEntities);
+    await API.viewer.setCamera({ modelId: modelEntities[0].modelId, objectRuntimeIds: modelEntities[0].objectRuntimeIds });
+  }
+
+  // ---------------------------------------------------------------------
+  // TAB 2: GROUPS
+  // ---------------------------------------------------------------------
+  function groupObjects(objects, groupByPath) {
+    const groups = new Map();
+    for (const obj of objects) {
+      const key = groupByPath === "__class__" ? obj.class : (findValue(obj, groupByPath) ?? "(không có giá trị)");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(obj);
+    }
+    return groups;
+  }
+
+  function runGroup() {
+    const groupBy = $("#groupBySelect").value;
+    const groups = groupObjects(filteredObjects, groupBy);
+    const tbody = $("#groupTable tbody");
+    tbody.innerHTML = "";
+    [...groups.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([key, objs]) => {
+      const tr = document.createElement("tr");
+      tr.className = "clickable";
+      tr.innerHTML = `<td>${escapeHtml(String(key))}</td><td>${objs.length}</td>`;
+      tr.onclick = () => selectAndIsolate(objs);
+      tbody.appendChild(tr);
+    });
+    $("#groupTable").style.display = groups.size ? "table" : "none";
+    $("#groupStatus").textContent = `${groups.size} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc. Click 1 dòng để chọn + zoom trong Viewer.`;
+  }
+
+  // ---------------------------------------------------------------------
+  // TAB 3: QUANTITY TAKEOFF + EXPORT EXCEL
+  // ---------------------------------------------------------------------
+  let lastQtoRows = [];
+
+  function sumProp(objects, path) {
+    if (!path) return null;
+    let total = 0;
+    let found = false;
+    for (const obj of objects) {
+      const v = parseFloat(findValue(obj, path));
+      if (!isNaN(v)) { total += v; found = true; }
+    }
+    return found ? total : null;
+  }
+
+  function runQto() {
+    const groupBy = $("#qtoGroupBySelect").value;
+    const volPath = $("#mapVolume").value;
+    const areaPath = $("#mapArea").value;
+    const lenPath = $("#mapLength").value;
+    const groups = groupObjects(filteredObjects, groupBy);
+
+    lastQtoRows = [...groups.entries()].map(([key, objs]) => ({
+      group: String(key),
+      count: objs.length,
+      volume: sumProp(objs, volPath),
+      area: sumProp(objs, areaPath),
+      length: sumProp(objs, lenPath)
+    })).sort((a, b) => b.count - a.count);
+
+    const tbody = $("#qtoTable tbody");
+    tbody.innerHTML = lastQtoRows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.group)}</td>
+        <td>${r.count}</td>
+        <td>${r.volume !== null ? r.volume.toFixed(3) : "—"}</td>
+        <td>${r.area !== null ? r.area.toFixed(3) : "—"}</td>
+        <td>${r.length !== null ? r.length.toFixed(3) : "—"}</td>
+      </tr>
+    `).join("");
+    $("#qtoTable").style.display = lastQtoRows.length ? "table" : "none";
+    $("#qtoStatus").textContent = `${lastQtoRows.length} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc.`;
+    $("#exportBtn").disabled = !lastQtoRows.length;
+  }
+
+  function exportExcel() {
+    if (!lastQtoRows.length) return;
+    const data = lastQtoRows.map(r => ({
+      "Nhóm": r.group,
+      "Số lượng": r.count,
+      "Thể tích": r.volume,
+      "Diện tích": r.area,
+      "Chiều dài": r.length
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bang khoi luong");
+    XLSX.writeFile(wb, "boc-khoi-luong.xlsx");
+  }
+
+  // ---------------------------------------------------------------------
+  // WIRING
+  // ---------------------------------------------------------------------
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[s]));
+  }
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      $("#" + tab.dataset.panel).classList.add("active");
+    };
+  });
+
+  $("#loadDataBtn").onclick = loadModelData;
+  $("#addCondBtn").onclick = addConditionRow;
+  $("#applyFilterBtn").onclick = applyFilter;
+  $("#clearFilterBtn").onclick = clearFilter;
+  $("#runGroupBtn").onclick = runGroup;
+  $("#runQtoBtn").onclick = runQto;
+  $("#exportBtn").onclick = exportExcel;
+
+  init().catch(e => {
+    console.error(e);
+    statusLine.textContent = "Không thể kết nối tới Trimble Connect 3D Viewer. Extension này chỉ chạy khi nhúng trong Viewer.";
+  });
+})();
+</script>
 </body>
 </html>
