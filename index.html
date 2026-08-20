@@ -144,6 +144,10 @@
       <button class="ghost" id="clearColorBtn" disabled>Xóa màu</button>
       <span class="status" id="rowSelectStatus">Tick chọn dòng bên dưới rồi dùng các nút này.</span>
     </div>
+    <details>
+      <summary>Xem chính xác object nào đang được tô/chọn (đối chiếu với model)</summary>
+      <pre id="paintDebugOutput">Tick dòng rồi bấm Tô màu / Select in 3D để xem danh sách.</pre>
+    </details>
     <table id="qtoTable" style="display:none">
       <thead><tr>
         <th style="width:24px"><input type="checkbox" id="qtoSelectAllRows" /></th>
@@ -664,19 +668,43 @@
     $("#selectIn3DBtn").disabled = !anyChecked;
     $("#paintBtn").disabled = !anyChecked;
     $("#clearColorBtn").disabled = !anyChecked;
-    const n = getCheckedRowObjects().length;
-    $("#rowSelectStatus").textContent = anyChecked
-      ? `Đã tick ${document.querySelectorAll(".qto-row-check:checked").length} nhóm (${n} object).`
-      : "Tick chọn dòng bên dưới rồi dùng các nút này.";
+    const objs = getCheckedRowObjects();
+    if (!anyChecked) {
+      $("#rowSelectStatus").textContent = "Tick chọn dòng bên dưới rồi dùng các nút này.";
+      return;
+    }
+    const classCounts = {};
+    objs.forEach(o => { classCounts[o.class] = (classCounts[o.class] || 0) + 1; });
+    const classSummary = Object.entries(classCounts)
+      .map(([cls, n]) => `${cls}(${n})`).join(", ");
+    $("#rowSelectStatus").textContent =
+      `Đã tick ${document.querySelectorAll(".qto-row-check:checked").length} nhóm — ${objs.length} object: ${classSummary}`;
+  }
+
+  /** In ra chính xác danh sách modelId/id/class đang được thao tác, để đối chiếu với model thật. */
+  function showPaintDebug(objs, actionLabel) {
+    const byModel = {};
+    objs.forEach(o => {
+      if (!byModel[o.modelId]) byModel[o.modelId] = [];
+      byModel[o.modelId].push({ id: o.id, class: o.class });
+    });
+    const lines = [`Hành động: ${actionLabel}`, `Tổng số object: ${objs.length}`, ""];
+    for (const [modelId, list] of Object.entries(byModel)) {
+      lines.push(`Model ${modelId}: ${list.length} object`);
+      list.slice(0, 30).forEach(o => lines.push(`  - id=${o.id}  class=${o.class}`));
+      if (list.length > 30) lines.push(`  ... và ${list.length - 30} object khác`);
+    }
+    $("#paintDebugOutput").textContent = lines.join("\n");
   }
 
   // ---------------------------------------------------------------------
   // Select in 3D — chọn sáng đúng các object của những dòng đã tick,
-  // KHÔNG ẩn phần còn lại (tôn trọng checkbox "Isolate" ở đầu trang).
+  // KHÔNG ẩn phần còn lại (tôn trọng chế độ hiển thị ở đầu trang).
   // ---------------------------------------------------------------------
   async function selectIn3D() {
     const objs = getCheckedRowObjects();
     if (!objs.length) return;
+    showPaintDebug(objs, "Select in 3D");
     await selectAndIsolate(objs);
   }
 
@@ -686,10 +714,19 @@
   // (tài liệu công khai không show đủ chi tiết). ObjectProperties.color
   // được xác nhận là kiểu string (hex), nên khả năng cao ObjectState cũng
   // nhận string hex tương tự — console.log để bạn đối chiếu nếu không lên màu.
+  //
+  // LƯU Ý QUAN TRỌNG KHÁC: nếu nhóm đang tick là theo "Assembly" (Tekla) hay
+  // các class dạng container (IFCELEMENTASSEMBLY...), 1 object Assembly có
+  // thể bao trọn rất nhiều hình học con — tô màu lên object Assembly đó có
+  // thể khiến cả 1 vùng lớn của model đổi màu dù số lượng "object" hiển thị
+  // trong bảng chỉ là 1-2. Đây KHÔNG phải lỗi chọn sai — hãy dùng khung debug
+  // bên dưới để xem chính xác id/class nào đang được tô, đối chiếu với vùng
+  // đổi màu trên model.
   // ---------------------------------------------------------------------
   async function paintCheckedRows(hexColorOrNull) {
     const objs = getCheckedRowObjects();
     if (!objs.length) return;
+    showPaintDebug(objs, hexColorOrNull ? `Tô màu ${hexColorOrNull}` : "Xóa màu");
     const modelEntities = groupByModel(objs);
     for (const me of modelEntities) {
       const selector = { modelId: me.modelId, objectRuntimeIds: me.objectRuntimeIds };
