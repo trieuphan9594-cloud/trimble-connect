@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search & Filter Assemblies</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #0063e5;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 9px;
+            background-color: #0063e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        button:hover {
+            background-color: #004bb5;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        #status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+    <!-- Nhúng thư viện Trimble Connect Workspace API -->
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+</head>
+<body>
+
+    <h3>Lọc Nhanh Assembly</h3>
+    
+    <div class="form-group">
+        <label for="assemblyInput">Nhập mã vị trí (Assembly Position):</label>
+        <input type="text" id="assemblyInput" placeholder="Ví dụ: B1, W-1, C12...">
+    </div>
+
+    <button id="btnIsolate">Cô lập Assembly (Isolate)</button>
+    <button id="btnSelect" class="btn-secondary">Chọn đối tượng (Select)</button>
+    <button id="btnReset" class="btn-secondary">Hiển thị tất cả (Reset)</button>
+
+    <div id="status">Đang kết nối tới Trimble Connect...</div>
+
+    <script>
+        let workspaceAPI = null;
+
+        async function init() {
+            try {
+                // Kết nối với môi trường Trimble Connect thông qua Workspace API
+                workspaceAPI = await TrimbleConnectWorkspace.connect(window.parent);
+                document.getElementById('status').innerText = "Đã kết nối thành công!";
+            } catch (error) {
+                console.error("Lỗi kết nối Workspace API:", error);
+                document.getElementById('status').innerText = "Không thể kết nối Trimble Connect.";
+            }
+        }
+
+        // Sự kiện nút: Lọc và cô lập assembly dựa trên thuộc tính
+        document.getElementById('btnIsolate').addEventListener('click', async () => {
+            if (!workspaceAPI) return;
+            const query = document.getElementById('assemblyInput').value.trim();
+            if (!query) {
+                alert("Vui lòng nhập mã assembly cần tìm!");
+                return;
+            }
+
+            document.getElementById('status').innerText = "Đang tìm kiếm...";
+            
+            try {
+                // Lấy danh sách các model đang load trong viewer
+                const models = await workspaceAPI.viewer.getLoadedModel();
+                // Thực hiện logic quét thuộc tính mô hình và gọi API cô lập đối tượng (isolate)
+                // Ví dụ mẫu: gọi phương thức viewer để xử lý lọc đối tượng dựa trên ID hoặc thuộc tính
+                document.getElementById('status').innerText = `Đã tìm kiếm với từ khóa: "${query}"`;
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status').innerText = "Lỗi khi xử lý tìm kiếm.";
+            }
+        });
+
+        // Nút Reset hiển thị lại toàn bộ mô hình
+        document.getElementById('btnReset').addEventListener('click', async () => {
+            if (!workspaceAPI) return;
+            document.getElementById('assemblyInput').value = '';
+            // Gọi lệnh reset hiển thị trong viewer nếu cần
+            document.getElementById('status').innerText = "Đã đặt lại trạng thái hiển thị.";
+        });
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "manifest_version": 1,
+  "name": "Assembly Search Extension",
+  "description": "Extension tìm kiếm và lọc nhanh Assembly trong Trimble Connect",
+  "version": "1.0.0",
+  "author": {
+    "name": "Phạm Tiến Vinh"
+  },
+  "extensions": [
+    {
+      "id": "assembly-search-filter",
+      "name": "Quick Search Assemblies",
+      "type": "ViewerExtension",
+      "url": "https://phamtienvinh.github.io/trimble-connect/index.html",
+      "icon": "https://phamtienvinh.github.io/trimble-connect/icon.png"
+    }
+  ]
+}
