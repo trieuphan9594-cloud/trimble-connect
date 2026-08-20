@@ -139,17 +139,17 @@
   tbody tr:last-child td { border-bottom: none; }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover { background: var(--navy-100); }
-  #groupTable td:nth-child(2), #groupTable th:nth-child(2) { font-family: var(--font-mono); text-align: right; }
-  #qtoTable td:nth-child(n+3), #qtoTable th:nth-child(n+3) { font-family: var(--font-mono); text-align: right; }
+  #groupTable td:nth-child(3), #groupTable th:nth-child(3) { font-family: var(--font-mono); text-align: right; }
+  #qtoTable td:nth-child(n+4), #qtoTable th:nth-child(n+4) { font-family: var(--font-mono); text-align: right; }
   /* Dòng "Tổng cộng" trình bày như con dấu tổng kết bảng bốc khối lượng */
   tfoot td {
     font-weight: 700; background: var(--amber-100); border-top: 2px solid var(--amber-500);
     border-bottom: none; color: var(--navy-900); padding: 9px;
   }
-  #qtoTable tfoot td:nth-child(2) {
+  #qtoTable tfoot td:nth-child(3) {
     font-family: var(--font-ui); text-transform: uppercase; font-size: 10.5px; letter-spacing: .06em;
   }
-  #qtoTable tfoot td:nth-child(n+3) { font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
+  #qtoTable tfoot td:nth-child(n+4) { font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
 
   /* ---- Status / messages ---- */
   .status { color: var(--text-mute); margin: 6px 0; font-size: 11.5px; }
@@ -188,6 +188,58 @@
     background: var(--navy-900); color: #B9E6D0; padding: 9px; margin: 0; overflow: auto;
     max-height: 220px; font-size: 10.5px; font-family: var(--font-mono); border-radius: 0;
   }
+
+  /* ---- Search box ---- */
+  .search-box {
+    display: flex; align-items: center; gap: 6px; flex: 1; min-width: 140px;
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 0 8px; background: #fff;
+  }
+  .search-box svg { width: 14px; height: 14px; color: var(--text-faint); flex-shrink: 0; }
+  .search-box input {
+    border: none; padding: 6px 0; font-size: 12px; flex: 1; min-width: 0; background: none; color: var(--text);
+  }
+  .search-box input:focus { outline: none; }
+
+  /* ---- Sortable column headers ---- */
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { background: #DCE6F1; }
+  .sort-arrow { display: inline-block; width: 9px; margin-left: 2px; opacity: .35; }
+  .sort-arrow::after { content: "↕"; font-size: 9px; }
+  th.sort-asc .sort-arrow, th.sort-desc .sort-arrow { opacity: 1; color: var(--amber-600); }
+  th.sort-asc .sort-arrow::after { content: "↑"; }
+  th.sort-desc .sort-arrow::after { content: "↓"; }
+
+  /* ---- Expand chevron + member detail row ---- */
+  .expand-toggle {
+    cursor: pointer; display: inline-flex; width: 16px; height: 16px; align-items: center;
+    justify-content: center; color: var(--text-mute); transition: transform .12s;
+  }
+  .expand-toggle.open { transform: rotate(90deg); color: var(--navy-700); }
+  tr.expand-row td { background: var(--surface); padding: 8px 10px 8px 34px; border-bottom: 1px solid var(--border); }
+  .member-list { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-mute); max-height: 140px; overflow: auto; }
+  .member-list div { padding: 1px 0; }
+  .member-list .more { color: var(--text-faint); font-style: italic; }
+
+  /* ---- Floating action bar (giống thanh "N selected" gốc của Trimble Connect) ---- */
+  .action-bar {
+    display: flex; align-items: center; gap: 8px; background: var(--navy-900); color: #fff;
+    border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; flex-wrap: wrap;
+    opacity: .45; pointer-events: none; transition: opacity .15s;
+  }
+  .action-bar.active { opacity: 1; pointer-events: auto; }
+  .action-bar-count { font-size: 12px; font-weight: 700; padding: 0 4px; white-space: nowrap; }
+  .action-bar-sep { width: 1px; height: 18px; background: rgba(255,255,255,.2); }
+  .icon-btn {
+    display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.16); color: #fff; padding: 6px 10px; border-radius: var(--radius);
+    font-size: 11.5px; font-weight: 600; cursor: pointer; transition: background .12s;
+  }
+  .icon-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .icon-btn:hover:not(:disabled) { background: rgba(255,255,255,.18); }
+  .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .icon-btn.primary { background: var(--amber-500); border-color: var(--amber-500); }
+  .icon-btn.primary:hover:not(:disabled) { background: var(--amber-600); }
+  .action-bar input[type=color] { border-color: rgba(255,255,255,.25); }
 </style>
 </head>
 <body>
@@ -262,9 +314,19 @@
           <select id="groupBySelect"><option value="__class__">Class (IfcType)</option></select>
           <button id="runGroupBtn">Tính nhóm</button>
         </div>
+        <div class="row">
+          <span class="search-box">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M9 16A7 7 0 109 2a7 7 0 000 14zM18 18l-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <input type="text" id="groupSearchInput" placeholder="Tìm theo tên nhóm…" />
+          </span>
+        </div>
         <div class="table-wrap">
           <table id="groupTable" style="display:none">
-            <thead><tr><th>Nhóm</th><th>Số lượng</th></tr></thead>
+            <thead><tr>
+              <th style="width:20px"></th>
+              <th data-sort="name" class="sortable">Nhóm<span class="sort-arrow"></span></th>
+              <th data-sort="count" class="sortable">Số lượng<span class="sort-arrow"></span></th>
+            </tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -299,27 +361,23 @@
       </div>
 
       <div class="card">
-        <div class="section-title">Thao tác trên model</div>
-        <div class="row">
-          <button id="selectIn3DBtn" disabled>📦 Select in 3D</button>
-          <input type="color" id="paintColorInput" value="#ff6a00" title="Chọn màu" />
-          <button class="secondary" id="paintBtn" disabled>🎨 Tô màu</button>
-          <button class="ghost" id="clearColorBtn" disabled>Xóa màu</button>
-        </div>
-        <div class="status" id="rowSelectStatus">Tick chọn dòng bên dưới rồi dùng các nút này.</div>
-        <details>
-          <summary>Xem chính xác object nào đang được tô/chọn (đối chiếu với model)</summary>
-          <pre id="paintDebugOutput">Tick dòng rồi bấm Tô màu / Select in 3D để xem danh sách.</pre>
-        </details>
-      </div>
-
-      <div class="card">
         <div class="section-title">Bảng khối lượng</div>
+        <div class="row">
+          <span class="search-box">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M9 16A7 7 0 109 2a7 7 0 000 14zM18 18l-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <input type="text" id="qtoSearchInput" placeholder="Tìm theo tên nhóm…" />
+          </span>
+        </div>
         <div class="table-wrap">
           <table id="qtoTable" style="display:none">
             <thead><tr>
+              <th style="width:20px"></th>
               <th style="width:24px"><input type="checkbox" id="qtoSelectAllRows" /></th>
-              <th>Nhóm</th><th>Số lượng</th><th>Thể tích</th><th>Diện tích</th><th>Chiều dài</th>
+              <th data-sort="name" class="sortable">Nhóm<span class="sort-arrow"></span></th>
+              <th data-sort="count" class="sortable">Số lượng<span class="sort-arrow"></span></th>
+              <th data-sort="volume" class="sortable">Thể tích<span class="sort-arrow"></span></th>
+              <th data-sort="area" class="sortable">Diện tích<span class="sort-arrow"></span></th>
+              <th data-sort="length" class="sortable">Chiều dài<span class="sort-arrow"></span></th>
             </tr></thead>
             <tbody></tbody>
             <tfoot></tfoot>
@@ -327,6 +385,25 @@
         </div>
         <div class="status" id="qtoStatus">Tick 1 hoặc nhiều dòng, sau đó bấm "Select in 3D" để chọn sáng đúng các cấu kiện đó trong model.</div>
       </div>
+
+      <!-- Thanh hành động nổi — chỉ hiện rõ tác dụng khi có dòng được tick -->
+      <div class="action-bar" id="actionBar">
+        <span class="action-bar-count" id="actionBarCount">0 đã chọn</span>
+        <span class="action-bar-sep"></span>
+        <button class="icon-btn primary" id="selectIn3DBtn" disabled title="Select in 3D">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M10 2l7 4v8l-7 4-7-4V6l7-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 2v8M3 6l7 4 7-4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          Select in 3D
+        </button>
+        <input type="color" id="paintColorInput" value="#ff6a00" title="Chọn màu" />
+        <button class="icon-btn" id="paintBtn" disabled title="Tô màu">🎨 Tô màu</button>
+        <button class="icon-btn" id="clearColorBtn" disabled title="Xóa màu">Xóa màu</button>
+      </div>
+      <div class="status" id="rowSelectStatus">Tick chọn dòng bên dưới rồi dùng các nút này.</div>
+
+      <details>
+        <summary>Xem chính xác object nào đang được tô/chọn (đối chiếu với model)</summary>
+        <pre id="paintDebugOutput">Tick dòng rồi bấm Tô màu / Select in 3D để xem danh sách.</pre>
+      </details>
     </div>
 
     <details>
@@ -753,27 +830,98 @@
     return groups;
   }
 
+  let lastGroupRows = [];           // [{key, objs}], thứ tự gốc không đổi
+  let groupSortKey = "count", groupSortDir = "desc";
+  let groupSearchQuery = "";
+  const expandedGroupRows = new Set();
+
+  function sortedFilteredIndices(rows, getVal, sortKey, sortDir, searchQuery, nameKey) {
+    let indices = rows.map((_, i) => i);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      indices = indices.filter(i => String(rows[i][nameKey]).toLowerCase().includes(q));
+    }
+    indices.sort((a, b) => {
+      const va = getVal(rows[a], sortKey), vb = getVal(rows[b], sortKey);
+      const na = parseFloat(va), nb = parseFloat(vb);
+      let cmp;
+      if (!isNaN(na) && !isNaN(nb)) cmp = na - nb;
+      else cmp = String(va).localeCompare(String(vb));
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return indices;
+  }
+
+  function updateSortHeaderUI(theadSelector, activeKey, dir) {
+    document.querySelectorAll(theadSelector + " th.sortable").forEach(th => {
+      th.classList.remove("sort-asc", "sort-desc");
+      if (th.dataset.sort === activeKey) th.classList.add(dir === "asc" ? "sort-asc" : "sort-desc");
+    });
+  }
+
+  function renderMemberList(objs) {
+    const cap = 50;
+    const lines = objs.slice(0, cap).map(o => `<div>id=${o.id}  ${escapeHtml(o.class)}</div>`).join("");
+    const more = objs.length > cap ? `<div class="more">… và ${objs.length - cap} object khác</div>` : "";
+    return `<div class="member-list">${lines}${more}</div>`;
+  }
+
+  function renderGroupTable() {
+    const getVal = (row, key) => key === "name" ? row.key : row.objs.length;
+    const indices = sortedFilteredIndices(lastGroupRows, getVal, groupSortKey, groupSortDir, groupSearchQuery, "key");
+    updateSortHeaderUI("#groupTable thead", groupSortKey, groupSortDir);
+
+    const tbody = $("#groupTable tbody");
+    tbody.innerHTML = indices.map(idx => {
+      const row = lastGroupRows[idx];
+      const isOpen = expandedGroupRows.has(idx);
+      let html = `
+        <tr class="clickable" data-idx="${idx}">
+          <td><span class="expand-toggle${isOpen ? " open" : ""}" data-expand-idx="${idx}">▸</span></td>
+          <td>${escapeHtml(row.key)}</td>
+          <td>${row.objs.length}</td>
+        </tr>`;
+      if (isOpen) html += `<tr class="expand-row"><td colspan="3">${renderMemberList(row.objs)}</td></tr>`;
+      return html;
+    }).join("");
+
+    tbody.querySelectorAll("tr[data-idx]").forEach(tr => {
+      tr.onclick = (e) => {
+        if (e.target.closest(".expand-toggle")) return; // xử lý riêng bên dưới
+        selectAndIsolate(lastGroupRows[Number(tr.dataset.idx)].objs);
+      };
+    });
+    tbody.querySelectorAll(".expand-toggle").forEach(el => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        const idx = Number(el.dataset.expandIdx);
+        if (expandedGroupRows.has(idx)) expandedGroupRows.delete(idx); else expandedGroupRows.add(idx);
+        renderGroupTable();
+      };
+    });
+
+    $("#groupTable").style.display = lastGroupRows.length ? "table" : "none";
+    $("#groupStatus").textContent = lastGroupRows.length
+      ? `${indices.length}/${lastGroupRows.length} nhóm hiển thị, dựa trên ${filteredObjects.length} đối tượng đã lọc. Click 1 dòng để chọn + zoom trong Viewer.`
+      : "Không có dữ liệu.";
+  }
+
   function runGroup() {
     const groupBy = $("#groupBySelect").value;
     const groups = groupObjects(filteredObjects, groupBy);
-    const tbody = $("#groupTable tbody");
-    tbody.innerHTML = "";
-    [...groups.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([key, objs]) => {
-      const tr = document.createElement("tr");
-      tr.className = "clickable";
-      tr.innerHTML = `<td>${escapeHtml(String(key))}</td><td>${objs.length}</td>`;
-      tr.onclick = () => selectAndIsolate(objs);
-      tbody.appendChild(tr);
-    });
-    $("#groupTable").style.display = groups.size ? "table" : "none";
-    $("#groupStatus").textContent = `${groups.size} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc. Click 1 dòng để chọn + zoom trong Viewer.`;
+    lastGroupRows = [...groups.entries()].map(([key, objs]) => ({ key: String(key), objs }));
+    expandedGroupRows.clear();
+    renderGroupTable();
   }
 
   // ---------------------------------------------------------------------
   // TAB 3: QUANTITY TAKEOFF + EXPORT EXCEL
   // ---------------------------------------------------------------------
-  let lastQtoRows = [];       // dữ liệu hiển thị + xuất Excel (không giữ object refs, để export gọn)
+  let lastQtoRows = [];       // dữ liệu hiển thị + xuất Excel (thứ tự gốc không đổi khi sort/search)
   let lastQtoGroupObjs = [];  // song song với lastQtoRows, giữ mảng object thật để "chọn trong Viewer"
+  let qtoSortKey = "count", qtoSortDir = "desc";
+  let qtoSearchQuery = "";
+  const expandedQtoRows = new Set();
 
   function sumProp(objects, path) {
     if (!path) return null;
@@ -792,41 +940,42 @@
     return (a || 0) + (b || 0);
   }
 
-  function runQto() {
-    const groupBy = $("#qtoGroupBySelect").value;
-    const volPath = $("#mapVolume").value;
-    const areaPath = $("#mapArea").value;
-    const lenPath = $("#mapLength").value;
-    const groups = groupObjects(filteredObjects, groupBy);
-
-    const entries = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
-    lastQtoGroupObjs = entries.map(([, objs]) => objs);
-    lastQtoRows = entries.map(([key, objs]) => ({
-      group: String(key),
-      count: objs.length,
-      volume: sumProp(objs, volPath),
-      area: sumProp(objs, areaPath),
-      length: sumProp(objs, lenPath)
-    }));
+  function renderQtoTable() {
+    const getVal = (row, key) => key === "name" ? row.group : (row[key] === null ? -Infinity : row[key]);
+    const indices = sortedFilteredIndices(lastQtoRows, getVal, qtoSortKey, qtoSortDir, qtoSearchQuery, "group");
+    updateSortHeaderUI("#qtoTable thead", qtoSortKey, qtoSortDir);
 
     const tbody = $("#qtoTable tbody");
-    tbody.innerHTML = lastQtoRows.map((r, idx) => `
-      <tr data-idx="${idx}">
-        <td><input type="checkbox" class="qto-row-check" data-idx="${idx}" /></td>
-        <td>${escapeHtml(r.group)}</td>
-        <td>${r.count}</td>
-        <td>${r.volume !== null ? r.volume.toFixed(3) : "—"}</td>
-        <td>${r.area !== null ? r.area.toFixed(3) : "—"}</td>
-        <td>${r.length !== null ? r.length.toFixed(3) : "—"}</td>
-      </tr>
-    `).join("");
-    tbody.querySelectorAll(".qto-row-check").forEach(cb => {
-      cb.onchange = updateRowSelectionUI;
+    tbody.innerHTML = indices.map(idx => {
+      const r = lastQtoRows[idx];
+      const isOpen = expandedQtoRows.has(idx);
+      let html = `
+        <tr data-idx="${idx}">
+          <td><span class="expand-toggle${isOpen ? " open" : ""}" data-expand-idx="${idx}">▸</span></td>
+          <td><input type="checkbox" class="qto-row-check" data-idx="${idx}" /></td>
+          <td>${escapeHtml(r.group)}</td>
+          <td>${r.count}</td>
+          <td>${r.volume !== null ? r.volume.toFixed(3) : "—"}</td>
+          <td>${r.area !== null ? r.area.toFixed(3) : "—"}</td>
+          <td>${r.length !== null ? r.length.toFixed(3) : "—"}</td>
+        </tr>`;
+      if (isOpen) html += `<tr class="expand-row"><td colspan="7">${renderMemberList(lastQtoGroupObjs[idx])}</td></tr>`;
+      return html;
+    }).join("");
+
+    tbody.querySelectorAll(".qto-row-check").forEach(cb => { cb.onchange = updateRowSelectionUI; });
+    tbody.querySelectorAll(".expand-toggle").forEach(el => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        const idx = Number(el.dataset.expandIdx);
+        if (expandedQtoRows.has(idx)) expandedQtoRows.delete(idx); else expandedQtoRows.add(idx);
+        renderQtoTable();
+      };
     });
     $("#qtoSelectAllRows").checked = false;
     updateRowSelectionUI();
 
-    // Dòng tổng cộng
+    // Dòng tổng cộng — LUÔN tính trên toàn bộ dữ liệu, không phụ thuộc tìm kiếm/sắp xếp
     const totalRow = lastQtoRows.reduce((acc, r) => ({
       count: acc.count + r.count,
       volume: addMaybe(acc.volume, r.volume),
@@ -836,7 +985,7 @@
 
     $("#qtoTable tfoot").innerHTML = lastQtoRows.length ? `
       <tr>
-        <td></td>
+        <td></td><td></td>
         <td>Tổng cộng</td>
         <td>${totalRow.count}</td>
         <td>${totalRow.volume !== null ? totalRow.volume.toFixed(3) : "—"}</td>
@@ -847,9 +996,29 @@
 
     $("#qtoTable").style.display = lastQtoRows.length ? "table" : "none";
     $("#qtoStatus").textContent = lastQtoRows.length
-      ? `${lastQtoRows.length} nhóm, dựa trên ${filteredObjects.length} đối tượng đã lọc. Tick dòng rồi bấm "Select in 3D".`
+      ? `${indices.length}/${lastQtoRows.length} nhóm hiển thị, dựa trên ${filteredObjects.length} đối tượng đã lọc. Tick dòng rồi bấm "Select in 3D".`
       : "Không có dữ liệu khớp bộ lọc hiện tại.";
     $("#exportBtn").disabled = !lastQtoRows.length;
+  }
+
+  function runQto() {
+    const groupBy = $("#qtoGroupBySelect").value;
+    const volPath = $("#mapVolume").value;
+    const areaPath = $("#mapArea").value;
+    const lenPath = $("#mapLength").value;
+    const groups = groupObjects(filteredObjects, groupBy);
+
+    const entries = [...groups.entries()];
+    lastQtoGroupObjs = entries.map(([, objs]) => objs);
+    lastQtoRows = entries.map(([key, objs]) => ({
+      group: String(key),
+      count: objs.length,
+      volume: sumProp(objs, volPath),
+      area: sumProp(objs, areaPath),
+      length: sumProp(objs, lenPath)
+    }));
+    expandedQtoRows.clear();
+    renderQtoTable();
   }
 
   // ---------------------------------------------------------------------
@@ -866,11 +1035,14 @@
   }
 
   function updateRowSelectionUI() {
-    const anyChecked = document.querySelectorAll(".qto-row-check:checked").length > 0;
+    const checkedCount = document.querySelectorAll(".qto-row-check:checked").length;
+    const anyChecked = checkedCount > 0;
     $("#selectIn3DBtn").disabled = !anyChecked;
     $("#paintBtn").disabled = !anyChecked;
     $("#clearColorBtn").disabled = !anyChecked;
+    $("#actionBar").classList.toggle("active", anyChecked);
     const objs = getCheckedRowObjects();
+    $("#actionBarCount").textContent = `${objs.length} đã chọn`;
     if (!anyChecked) {
       $("#rowSelectStatus").textContent = "Tick chọn dòng bên dưới rồi dùng các nút này.";
       return;
@@ -880,7 +1052,7 @@
     const classSummary = Object.entries(classCounts)
       .map(([cls, n]) => `${cls}(${n})`).join(", ");
     $("#rowSelectStatus").textContent =
-      `Đã tick ${document.querySelectorAll(".qto-row-check:checked").length} nhóm — ${objs.length} object: ${classSummary}`;
+      `Đã tick ${checkedCount} nhóm — ${objs.length} object: ${classSummary}`;
   }
 
   /** In ra chính xác danh sách modelId/id/class đang được thao tác, để đối chiếu với model thật. */
@@ -994,6 +1166,34 @@
     updateRowSelectionUI();
   };
   $("#restoreViewBtn").onclick = () => restoreOriginalView().catch(e => console.error(e));
+
+  // Tìm kiếm theo tên nhóm
+  $("#groupSearchInput").oninput = (e) => {
+    groupSearchQuery = e.target.value;
+    if (lastGroupRows.length) renderGroupTable();
+  };
+  $("#qtoSearchInput").oninput = (e) => {
+    qtoSearchQuery = e.target.value;
+    if (lastQtoRows.length) renderQtoTable();
+  };
+
+  // Sắp xếp theo cột — click lần 1 = desc, click lại cùng cột = đảo chiều
+  document.querySelectorAll("#groupTable thead th.sortable").forEach(th => {
+    th.onclick = () => {
+      const key = th.dataset.sort;
+      groupSortDir = (groupSortKey === key && groupSortDir === "desc") ? "asc" : "desc";
+      groupSortKey = key;
+      if (lastGroupRows.length) renderGroupTable();
+    };
+  });
+  document.querySelectorAll("#qtoTable thead th.sortable").forEach(th => {
+    th.onclick = () => {
+      const key = th.dataset.sort;
+      qtoSortDir = (qtoSortKey === key && qtoSortDir === "desc") ? "asc" : "desc";
+      qtoSortKey = key;
+      if (lastQtoRows.length) renderQtoTable();
+    };
+  });
 
   init().catch(e => {
     console.error(e);
